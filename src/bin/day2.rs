@@ -5,11 +5,16 @@ fn main() -> anyhow::Result<()> {
         match part {
             Part::One => {
                 let result = all_lines(filename)?
-                    .filter(|line| safe_line(line.as_str()))
+                    .filter(|line| safe_line(&line2nums(line.as_str())))
                     .count();
                 println!("{result}");
             }
-            Part::Two => {}
+            Part::Two => {
+                let result = all_lines(filename)?
+                    .filter(|line| safe_line_2(line.as_str()))
+                    .count();
+                println!("{result}");
+            }
         }
 
         Ok(())
@@ -34,23 +39,34 @@ impl Dir {
     }
 }
 
-fn safe_line(line: &str) -> bool {
-    let mut nums = line.split_whitespace().map(|s| s.parse::<i64>().unwrap());
-    let mut prev = nums.next().unwrap();
-    let mut current = nums.next().unwrap();
-    match Dir::new(prev, current) {
+fn line2nums(line: &str) -> Vec<i64> {
+    line.split_whitespace().map(|s| s.parse::<i64>().unwrap()).collect()
+}
+
+fn safe_line(nums: &Vec<i64>) -> bool {
+    match Dir::new(nums[0], nums[1]) {
         None => false,
-        Some(dir) => loop {
-            if (prev - current).abs() > 3 || Dir::new(prev, current).map_or(true, |d| d != dir) {
-                return false;
-            }
-            match nums.next() {
-                None => return true,
-                Some(n) => {
-                    prev = current;
-                    current = n;
+        Some(dir) => {
+            for i in 1..nums.len() {
+                if (nums[i] - nums[i - 1]).abs() > 3 || Dir::new(nums[i - 1], nums[i]).map_or(true, |d| d != dir) {
+                    return false;
                 }
             }
-        },
+            true
+        }
     }
+}
+
+fn without_element(nums: &Vec<i64>, target: usize) -> Vec<i64> {
+    nums.iter().enumerate().filter(|(i, _)| *i != target).map(|(_, v)| *v).collect()
+}
+
+fn safe_line_2(line: &str) -> bool {
+    let nums = line.split_whitespace().map(|s| s.parse::<i64>().unwrap()).collect::<Vec<_>>();
+    for i in 0..nums.len() {
+        if safe_line(&without_element(&nums, i)) {
+            return true;
+        }
+    }
+    false
 }
