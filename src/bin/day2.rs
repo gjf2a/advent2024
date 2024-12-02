@@ -2,21 +2,13 @@ use advent_code_lib::{all_lines, chooser_main, Part};
 
 fn main() -> anyhow::Result<()> {
     chooser_main(|filename, part, _| {
-        match part {
-            Part::One => {
-                let result = all_lines(filename)?
-                    .filter(|line| safe_line(&line2nums(line.as_str())))
-                    .count();
-                println!("{result}");
-            }
-            Part::Two => {
-                let result = all_lines(filename)?
-                    .filter(|line| safe_line_2(line.as_str()))
-                    .count();
-                println!("{result}");
-            }
-        }
-
+        let result = all_lines(filename)?
+            .filter(|line| match part {
+                Part::One => safe_line(&line2nums(line.as_str())),
+                Part::Two => safe_line_2(line.as_str()),
+            })
+            .count();
+        println!("{result}");
         Ok(())
     })
 }
