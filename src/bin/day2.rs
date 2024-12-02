@@ -4,12 +4,12 @@ fn main() -> anyhow::Result<()> {
     chooser_main(|filename, part, _| {
         match part {
             Part::One => {
-                let result = all_lines(filename)?.filter(|line| safe_line(line.as_str())).count();
+                let result = all_lines(filename)?
+                    .filter(|line| safe_line(line.as_str()))
+                    .count();
                 println!("{result}");
             }
-            Part::Two => {
-                
-            }
+            Part::Two => {}
         }
 
         Ok(())
@@ -17,7 +17,10 @@ fn main() -> anyhow::Result<()> {
 }
 
 #[derive(Eq, PartialEq)]
-enum Dir {Up, Down}
+enum Dir {
+    Up,
+    Down,
+}
 
 impl Dir {
     fn new(n1: i64, n2: i64) -> Option<Self> {
@@ -32,26 +35,22 @@ impl Dir {
 }
 
 fn safe_line(line: &str) -> bool {
-    println!("line: {line}");
     let mut nums = line.split_whitespace().map(|s| s.parse::<i64>().unwrap());
     let mut prev = nums.next().unwrap();
     let mut current = nums.next().unwrap();
     match Dir::new(prev, current) {
-        None => {println!("Unsafe 1"); false},
-        Some(dir) => {
-            loop {
-                if (prev - current).abs() > 3 || Dir::new(prev, current).map_or(true, |d| d != dir) {
-                    println!("Unsafe 2");
-                    return false;
-                }
-                match nums.next() {
-                    None => {println!("Safe"); return true},
-                    Some(n) => {
-                        prev = current;
-                        current = n;
-                    }
+        None => false,
+        Some(dir) => loop {
+            if (prev - current).abs() > 3 || Dir::new(prev, current).map_or(true, |d| d != dir) {
+                return false;
+            }
+            match nums.next() {
+                None => return true,
+                Some(n) => {
+                    prev = current;
+                    current = n;
                 }
             }
-        }
+        },
     }
 }
