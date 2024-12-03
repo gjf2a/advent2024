@@ -1,5 +1,11 @@
 use std::{
-    cmp::{max, min}, collections::HashMap, fmt::Display, iter::Sum, mem, ops::{Add, Index, IndexMut, Mul, Neg, Sub}, str::FromStr
+    cmp::{max, min},
+    collections::HashMap,
+    fmt::Display,
+    iter::Sum,
+    mem,
+    ops::{Add, Index, IndexMut, Mul, Neg, Sub},
+    str::FromStr,
 };
 
 use bare_metal_modulo::NumType;
@@ -45,7 +51,7 @@ impl Position {
     }
 
     pub fn from(pair: (isize, isize)) -> Self {
-        Self::new([pair.0, pair.1])   
+        Self::new([pair.0, pair.1])
     }
 
     pub fn next_in_grid(&self, width: usize, height: usize) -> Option<Position> {
@@ -62,7 +68,6 @@ impl Position {
         }
     }
 }
-
 
 impl<N: NumType + Default, const S: usize> Point<N, S> {
     pub fn new(coords: [N; S]) -> Self {
@@ -422,7 +427,7 @@ impl RingIterator {
             start: start,
             end: Position::from((start[0] + width - 1, start[1] + height - 1)),
             direction: ManhattanDir::E,
-            done: false
+            done: false,
         }
     }
 

@@ -126,7 +126,11 @@ impl<V: Copy + Clone + Eq + PartialEq> GridWorld<V> {
     }
 
     pub fn ring_iter(&self) -> RingIterator {
-        RingIterator::new(self.map.keys().min().copied().unwrap(), self.width as isize, self.height as isize)
+        RingIterator::new(
+            self.map.keys().min().copied().unwrap(),
+            self.width as isize,
+            self.height as isize,
+        )
     }
 
     pub fn positions_for(&self, item: V) -> BTreeSet<Position> {

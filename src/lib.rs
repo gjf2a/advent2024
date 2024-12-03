@@ -1,8 +1,13 @@
-mod multidim;
-mod searchers;
-mod grid;
+pub mod grid;
+pub mod multidim;
+pub mod searchers;
 
-use std::{env, fs::{self, File}, io::{self, BufRead, BufReader, Lines}, str::FromStr};
+use std::{
+    env,
+    fs::{self, File},
+    io::{self, BufRead, BufReader, Lines},
+    str::FromStr,
+};
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub enum Part {
@@ -41,4 +46,3 @@ pub fn all_lines_wrap(filename: &str) -> io::Result<Lines<BufReader<File>>> {
 pub fn all_lines(filename: &str) -> io::Result<impl Iterator<Item = String>> {
     Ok(all_lines_wrap(filename)?.map(|line| line.unwrap()))
 }
-
