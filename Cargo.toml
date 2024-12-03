@@ -4,5 +4,12 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-advent_code_lib = {git = "https://github.com/gjf2a/advent_code_lib"}
 anyhow = "1"
+bare_metal_modulo = "1"
+enum-iterator = "2"
+num = "0.4"
+indexmap = "2"
+derive-getters = "0.5"
+common_macros = "0.1"
+trait-set = "0.3"
+regex = "1.11.1"
