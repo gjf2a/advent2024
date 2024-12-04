@@ -21,35 +21,6 @@ pub struct Point<N: NumType + Default, const S: usize> {
 }
 
 impl Position {
-    pub fn manhattan_move(&mut self, dir: ManhattanDir) {
-        match dir {
-            ManhattanDir::N => self[1] -= 1,
-            ManhattanDir::E => self[0] += 1,
-            ManhattanDir::S => self[1] += 1,
-            ManhattanDir::W => self[0] -= 1,
-        }
-    }
-
-    pub fn manhattan_moved(&self, dir: ManhattanDir) -> Self {
-        let mut result = *self;
-        result.manhattan_move(dir);
-        result
-    }
-
-    pub fn dir_moved(&self, dir: Dir) -> Self {
-        *self
-            + Self::new(match dir {
-                Dir::N => [0, -1],
-                Dir::Ne => [1, -1],
-                Dir::E => [1, 0],
-                Dir::Se => [1, 1],
-                Dir::S => [0, 1],
-                Dir::Sw => [-1, 1],
-                Dir::W => [-1, 0],
-                Dir::Nw => [-1, -1],
-            })
-    }
-
     pub fn from(pair: (isize, isize)) -> Self {
         Self::new([pair.0, pair.1])
     }
