@@ -12,6 +12,7 @@ fn main() -> anyhow::Result<()> {
     })
 }
 
+#[derive(Debug)]
 struct Starts {
     x: isize,
     y: isize,
@@ -62,14 +63,14 @@ impl Iterator for Starts {
     
     fn next(&mut self) -> Option<Self::Item> {
         let result = (self.x, self.y);
-        if self.dx > 0 {
+        if self.dx != 0 {
             self.x += self.dx;
             if !self.x_in_bounds() {
                 self.dx = 0;
                 self.x = 0;
             }
             Some(result)
-        } else if self.dy > 0 {
+        } else if self.dy != 0 {
             self.y += self.dy;
             if !self.y_in_bounds() {
                 self.dy = 0;
@@ -93,6 +94,7 @@ mod tests {
         for d in all::<Dir>() {
             let starts = Starts::new(d, 3, 2).collect::<Vec<_>>();
             println!("{d:?}: {starts:?}");
+            println!("{:?}", Starts::new(d, 3, 2));
         }
     }
 }
