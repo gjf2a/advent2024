@@ -5,7 +5,7 @@ use std::{
     str::FromStr,
 };
 
-use crate::multidim::{map_width_height, to_map, Position, RingIterator, RowMajorPositionIterator};
+use crate::multidim::{map_width_height, to_map, DirType, Position, RingIterator, RowMajorPositionIterator};
 
 pub type GridDigitWorld = GridWorld<ModNumC<u8, 10>>;
 pub type GridCharWorld = GridWorld<char>;
@@ -73,6 +73,16 @@ impl<V: Copy + Clone + Eq + PartialEq> GridWorld<V> {
         Ok(Self { map, width, height })
     }
 
+    pub fn new(width: usize, height: usize, fill_value: V) -> Self {
+        let mut map = BTreeMap::new();
+        for i in 0..(width as isize) {
+            for j in 0..(height as isize) {
+                map.insert(Position::from((i, j)), fill_value);
+            }
+        }
+        Self {map, width, height}
+    }
+
     pub fn at_edge(&self, p: Position) -> bool {
         p[0] == 0
             || p[1] == 0
@@ -96,8 +106,29 @@ impl<V: Copy + Clone + Eq + PartialEq> GridWorld<V> {
         self.map.get(&p).copied()
     }
 
+    pub fn values_from<D: DirType>(&self, p: Position, dir: D, num_values: usize) -> Vec<V> {
+        let mut result = vec![];
+        let mut p = p;
+        for _ in 0..num_values {
+            match self.value(p) {
+                None => break,
+                Some(v) => {
+                    result.push(v);
+                    p = dir.neighbor(p);
+                }
+            }
+        }
+        result
+    }
+
     pub fn get(&self, col: usize, row: usize) -> Option<V> {
         self.value(Position::from((col as isize, row as isize)))
+    }
+
+    pub fn update(&mut self, p: Position, value: V) {
+        if let Some(current) = self.map.get_mut(&p) {
+            *current = value;
+        }
     }
 
     pub fn modify<M: FnMut(&mut V)>(&mut self, p: Position, mut modifier: M) {

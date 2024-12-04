@@ -1,13 +1,25 @@
-use advent2024::{chooser_main, grid::GridCharWorld, multidim::{Dir, DirType}, Part};
+use advent2024::{chooser_main, grid::GridCharWorld, multidim::{Dir, DirType, Position}, Part};
 use enum_iterator::all;
 
 fn main() -> anyhow::Result<()> {
     chooser_main(|filename, part, _| {
+        let target = vec!['X', 'M', 'A', 'S'];
         let world = GridCharWorld::from_char_file(filename)?;
+        let mut world_track = GridCharWorld::new(world.width(), world.height(), '.');
+
+        let mut count = 0;
         for dir in all::<Dir>() {
-            let (dx, dy) = dir.offset();
-            
+            for start in Starts::new(dir, world.width() as isize, world.height() as isize) {
+                let mut current = start;
+                while world.in_bounds(current) {
+                    let streak = world.values_from(current, dir, target.len());
+                    if streak == target {count += 1; world_track.update(current, 'X'); println!("{count}: {current}");}
+                    current = dir.neighbor(current);
+                }
+            }
         }
+        println!("{count}");
+        println!("{world_track}");
         Ok(())
     })
 }
@@ -26,7 +38,7 @@ struct Starts {
 
 impl Starts {
     fn new(d: Dir, width: isize, height: isize) -> Self {
-        let (x, y, dx, dy, x_restart, y_restart) = match d {
+        let (mut x, mut y, dx, dy, x_restart, y_restart) = match d {
             Dir::N => (0, height - 1, 1, 0, 0, 0),
             Dir::Ne => (0, height - 1, 1, -1, 0, height - 2),
             Dir::E => (0, 0, 0, 1, 0, 0),
@@ -36,6 +48,10 @@ impl Starts {
             Dir::W => (0, 0, 0, 1, width - 1, 0),
             Dir::Nw => (0, height - 1, 1, -1, width - 1, height - 2),
         };
+        if dx == 0 {
+            x = x_restart;
+            y = y_restart;
+        }
         Self {x, y, dx, dy, x_restart, y_restart, width, height}
     }
 
@@ -49,7 +65,7 @@ impl Starts {
 }
 
 impl Iterator for Starts {
-    type Item = (isize, isize);
+    type Item = Position;
     
     fn next(&mut self) -> Option<Self::Item> {
         let result = (self.x, self.y);
@@ -60,13 +76,13 @@ impl Iterator for Starts {
                 self.x = self.x_restart;
                 self.y = self.y_restart;
             }
-            Some(result)
+            Some(Position::from(result))
         } else if self.dy != 0 {
             self.y += self.dy;
             if !self.y_in_bounds() {
                 self.dy = 0;
             }
-            Some(result)
+            Some(Position::from(result))
         } else {
             None
         }

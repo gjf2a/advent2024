@@ -250,27 +250,14 @@ where
 }
 
 pub trait DirType {
-    fn offset(&self) -> (isize, isize);
+    fn offset(&self) -> Position;
 
     fn clockwise(&self) -> Self;
 
     fn counterclockwise(&self) -> Self;
 
-    fn next_position(&self, p: Position) -> Position {
-        p + Position::from(self.offset())
-    }
-
-    fn position_offset(&self) -> Position {
-        Position::from(self.offset())
-    }
-
-    fn neighbor(&self, col: isize, row: isize) -> (isize, isize) {
-        let (d_col, d_row) = self.offset();
-        (col + d_col, row + d_row)
-    }
-
-    fn position_neighbor(&self, col: isize, row: isize) -> Position {
-        Position::from(self.neighbor(col, row))
+    fn neighbor(&self, p: Position) -> Position {
+        p + self.offset()
     }
 }
 
@@ -283,13 +270,13 @@ pub enum ManhattanDir {
 }
 
 impl DirType for ManhattanDir {
-    fn offset(&self) -> (isize, isize) {
-        match self {
+    fn offset(&self) -> Position {
+        Position::from(match self {
             ManhattanDir::N => (0, -1),
             ManhattanDir::E => (1, 0),
             ManhattanDir::S => (0, 1),
             ManhattanDir::W => (-1, 0),
-        }
+        })
     }
 
     fn clockwise(&self) -> ManhattanDir {
@@ -335,8 +322,8 @@ pub enum Dir {
 }
 
 impl DirType for Dir {
-    fn offset(&self) -> (isize, isize) {
-        match self {
+    fn offset(&self) -> Position {
+        Position::from(match self {
             Dir::N => (0, -1),
             Dir::Ne => (1, -1),
             Dir::E => (1, 0),
@@ -345,7 +332,7 @@ impl DirType for Dir {
             Dir::Sw => (-1, 1),
             Dir::W => (-1, 0),
             Dir::Nw => (-1, -1),
-        }
+        })
     }
 
     fn clockwise(&self) -> Dir {
@@ -461,10 +448,10 @@ impl Iterator for RingIterator {
             None
         } else {
             let result = self.current;
-            let mut candidate = self.direction.next_position(self.current);
+            let mut candidate = self.direction.neighbor(self.current);
             if !self.in_bounds(candidate) {
                 self.direction = self.direction.clockwise();
-                candidate = self.direction.next_position(self.current);
+                candidate = self.direction.neighbor(self.current);
             }
             self.done = candidate == self.start;
             self.current = candidate;
