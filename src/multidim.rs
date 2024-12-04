@@ -249,12 +249,22 @@ where
     }
 }
 
-pub trait DirType {
+pub trait DirType: Copy {
     fn offset(&self) -> Position;
 
     fn clockwise(&self) -> Self;
 
     fn counterclockwise(&self) -> Self;
+
+    fn inverse(&self) -> Self;
+
+    fn clockwises(&self, c: usize) -> Self {
+        let mut result = *self;
+        for _ in 0..c {
+            result = result.clockwise();
+        }
+        result
+    }
 
     fn neighbor(&self, p: Position) -> Position {
         p + self.offset()
@@ -296,10 +306,8 @@ impl DirType for ManhattanDir {
             ManhattanDir::E => ManhattanDir::N,
         }
     }
-}
-
-impl ManhattanDir {
-    pub fn inverse(&self) -> ManhattanDir {
+    
+    fn inverse(&self) -> ManhattanDir {
         match self {
             ManhattanDir::N => ManhattanDir::S,
             ManhattanDir::S => ManhattanDir::N,
@@ -359,6 +367,10 @@ impl DirType for Dir {
             Dir::E => Dir::Ne,
             Dir::Ne => Dir::N,
         }
+    }
+
+    fn inverse(&self) -> Dir {
+        self.clockwises(4)
     }
 }
 

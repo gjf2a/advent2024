@@ -3,20 +3,38 @@ use enum_iterator::all;
 
 fn main() -> anyhow::Result<()> {
     chooser_main(|filename, part, _| {
-        let target = vec!['X', 'M', 'A', 'S'];
         let world = GridCharWorld::from_char_file(filename)?;
-        let mut count = 0;
-        for dir in all::<Dir>() {
-            for start in Starts::new(dir, world.width() as isize, world.height() as isize) {
-                let mut current = start;
-                while world.in_bounds(current) {
-                    let streak = world.values_from(current, dir, target.len());
-                    if streak == target {count += 1;}
-                    current = dir.neighbor(current);
+        match part {
+            Part::One => {
+                let target = vec!['X', 'M', 'A', 'S'];
+                let mut count = 0;
+                for dir in all::<Dir>() {
+                    for start in Starts::new(dir, world.width() as isize, world.height() as isize) {
+                        let mut current = start;
+                        while world.in_bounds(current) {
+                            let streak = world.values_from(current, dir, target.len());
+                            if streak == target {count += 1;}
+                            current = dir.neighbor(current);
+                        }
+                    }
                 }
+                println!("{count}");
+            }
+            Part::Two => {
+                let target = vec!['M', 'A', 'S'];
+                let diags = vec![Dir::Nw, Dir::Sw, Dir::Ne, Dir::Se];
+                let mut count = 0;
+                for (p, c) in world.position_value_iter() {
+                    if *c == 'A' && !world.at_edge(*p) {
+                        let matching_diags = diags.iter().filter(|d| world.values_from(d.neighbor(*p), d.inverse(), target.len()) == target).count();
+                        if matching_diags == 2 {
+                            count += 1;
+                        }
+                    }
+                }
+                println!("{count}");
             }
         }
-        println!("{count}");
         Ok(())
     })
 }
