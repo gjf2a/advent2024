@@ -252,6 +252,10 @@ where
 pub trait DirType {
     fn offset(&self) -> (isize, isize);
 
+    fn clockwise(&self) -> Self;
+
+    fn counterclockwise(&self) -> Self;
+
     fn next_position(&self, p: Position) -> Position {
         p + Position::from(self.offset())
     }
@@ -287,6 +291,24 @@ impl DirType for ManhattanDir {
             ManhattanDir::W => (-1, 0),
         }
     }
+
+    fn clockwise(&self) -> ManhattanDir {
+        match self {
+            ManhattanDir::N => ManhattanDir::E,
+            ManhattanDir::E => ManhattanDir::S,
+            ManhattanDir::S => ManhattanDir::W,
+            ManhattanDir::W => ManhattanDir::N,
+        }
+    }
+
+    fn counterclockwise(&self) -> ManhattanDir {
+        match self {
+            ManhattanDir::N => ManhattanDir::W,
+            ManhattanDir::W => ManhattanDir::S,
+            ManhattanDir::S => ManhattanDir::E,
+            ManhattanDir::E => ManhattanDir::N,
+        }
+    }
 }
 
 impl ManhattanDir {
@@ -296,24 +318,6 @@ impl ManhattanDir {
             ManhattanDir::S => ManhattanDir::N,
             ManhattanDir::E => ManhattanDir::W,
             ManhattanDir::W => ManhattanDir::E,
-        }
-    }
-
-    pub fn clockwise(&self) -> ManhattanDir {
-        match self {
-            ManhattanDir::N => ManhattanDir::E,
-            ManhattanDir::E => ManhattanDir::S,
-            ManhattanDir::S => ManhattanDir::W,
-            ManhattanDir::W => ManhattanDir::N,
-        }
-    }
-
-    pub fn counterclockwise(&self) -> ManhattanDir {
-        match self {
-            ManhattanDir::N => ManhattanDir::W,
-            ManhattanDir::W => ManhattanDir::S,
-            ManhattanDir::S => ManhattanDir::E,
-            ManhattanDir::E => ManhattanDir::N,
         }
     }
 }
@@ -343,10 +347,8 @@ impl DirType for Dir {
             Dir::Nw => (-1, -1),
         }
     }
-}
 
-impl Dir {
-    pub fn right(&self) -> Dir {
+    fn clockwise(&self) -> Dir {
         match self {
             Dir::N => Dir::Ne,
             Dir::Ne => Dir::E,
@@ -359,12 +361,27 @@ impl Dir {
         }
     }
 
+    fn counterclockwise(&self) -> Dir {
+        match self {
+            Dir::N => Dir::Nw,
+            Dir::Nw => Dir::W,
+            Dir::W => Dir::Sw,
+            Dir::Sw => Dir::S,
+            Dir::S => Dir::Se,
+            Dir::Se => Dir::E,
+            Dir::E => Dir::Ne,
+            Dir::Ne => Dir::N,
+        }
+    }
+}
+
+impl Dir {
     pub fn rotated_degrees(&self, degrees: isize) -> Dir {
         let mut steps = normalize_degrees(degrees) / 45;
         let mut result = *self;
         while steps > 0 {
             steps -= 1;
-            result = result.right();
+            result = result.clockwise();
         }
         result
     }
