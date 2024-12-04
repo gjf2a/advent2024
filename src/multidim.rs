@@ -258,6 +258,10 @@ pub trait DirType: Copy {
 
     fn inverse(&self) -> Self;
 
+    fn iter_from(&self, p: Position) -> DirIter<Self> {
+        DirIter { p, d: *self }
+    }
+
     fn clockwises(&self, c: usize) -> Self {
         let mut result = *self;
         for _ in 0..c {
@@ -268,6 +272,22 @@ pub trait DirType: Copy {
 
     fn neighbor(&self, p: Position) -> Position {
         p + self.offset()
+    }
+}
+
+#[derive(Copy, Clone)]
+pub struct DirIter<D: DirType> {
+    p: Position,
+    d: D,
+}
+
+impl<D: DirType> Iterator for DirIter<D> {
+    type Item = Position;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let p = self.p;
+        self.p = self.d.neighbor(p);
+        Some(p)
     }
 }
 

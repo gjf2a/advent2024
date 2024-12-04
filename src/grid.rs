@@ -109,18 +109,12 @@ impl<V: Copy + Clone + Eq + PartialEq> GridWorld<V> {
     }
 
     pub fn values_from<D: DirType>(&self, p: Position, dir: D, num_values: usize) -> Vec<V> {
-        let mut result = vec![];
-        let mut p = p;
-        for _ in 0..num_values {
-            match self.value(p) {
-                None => break,
-                Some(v) => {
-                    result.push(v);
-                    p = dir.neighbor(p);
-                }
-            }
-        }
-        result
+        dir.iter_from(p)
+            .take(num_values)
+            .map(|p| self.value(p))
+            .take_while(|v| v.is_some())
+            .map(|v| v.unwrap())
+            .collect()
     }
 
     pub fn get(&self, col: usize, row: usize) -> Option<V> {
