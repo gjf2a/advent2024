@@ -5,21 +5,18 @@ fn main() -> anyhow::Result<()> {
     chooser_main(|filename, part, _| {
         let target = vec!['X', 'M', 'A', 'S'];
         let world = GridCharWorld::from_char_file(filename)?;
-        let mut world_track = GridCharWorld::new(world.width(), world.height(), '.');
-
         let mut count = 0;
         for dir in all::<Dir>() {
             for start in Starts::new(dir, world.width() as isize, world.height() as isize) {
                 let mut current = start;
                 while world.in_bounds(current) {
                     let streak = world.values_from(current, dir, target.len());
-                    if streak == target {count += 1; world_track.update(current, 'X'); println!("{count}: {current}");}
+                    if streak == target {count += 1;}
                     current = dir.neighbor(current);
                 }
             }
         }
         println!("{count}");
-        println!("{world_track}");
         Ok(())
     })
 }
