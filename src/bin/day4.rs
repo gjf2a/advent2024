@@ -1,4 +1,9 @@
-use advent2024::{chooser_main, grid::GridCharWorld, multidim::{Dir, DirType, Position}, Part};
+use advent2024::{
+    chooser_main,
+    grid::GridCharWorld,
+    multidim::{Dir, DirType, Position},
+    Part,
+};
 use enum_iterator::all;
 
 fn main() -> anyhow::Result<()> {
@@ -13,7 +18,9 @@ fn main() -> anyhow::Result<()> {
                         let mut current = start;
                         while world.in_bounds(current) {
                             let streak = world.values_from(current, dir, target.len());
-                            if streak == target {count += 1;}
+                            if streak == target {
+                                count += 1;
+                            }
                             current = dir.neighbor(current);
                         }
                     }
@@ -26,7 +33,13 @@ fn main() -> anyhow::Result<()> {
                 let mut count = 0;
                 for (p, c) in world.position_value_iter() {
                     if *c == 'A' && !world.at_edge(*p) {
-                        let matching_diags = diags.iter().filter(|d| world.values_from(d.neighbor(*p), d.inverse(), target.len()) == target).count();
+                        let matching_diags = diags
+                            .iter()
+                            .filter(|d| {
+                                world.values_from(d.neighbor(*p), d.inverse(), target.len())
+                                    == target
+                            })
+                            .count();
                         if matching_diags == 2 {
                             count += 1;
                         }
@@ -67,7 +80,16 @@ impl Starts {
             x = x_restart;
             y = y_restart;
         }
-        Self {x, y, dx, dy, x_restart, y_restart, width, height}
+        Self {
+            x,
+            y,
+            dx,
+            dy,
+            x_restart,
+            y_restart,
+            width,
+            height,
+        }
     }
 
     fn x_in_bounds(&self) -> bool {
@@ -81,7 +103,7 @@ impl Starts {
 
 impl Iterator for Starts {
     type Item = Position;
-    
+
     fn next(&mut self) -> Option<Self::Item> {
         let result = (self.x, self.y);
         if self.dx != 0 {
@@ -100,22 +122,6 @@ impl Iterator for Starts {
             Some(Position::from(result))
         } else {
             None
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use advent2024::multidim::Dir;
-    use enum_iterator::all;
-
-    use crate::Starts;
-
-    #[test]
-    fn test_starts() {
-        for d in all::<Dir>() {
-            let starts = Starts::new(d, 4, 3).collect::<Vec<_>>();
-            println!("{d:?}: {starts:?}");
         }
     }
 }

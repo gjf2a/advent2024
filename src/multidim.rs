@@ -306,7 +306,7 @@ impl DirType for ManhattanDir {
             ManhattanDir::E => ManhattanDir::N,
         }
     }
-    
+
     fn inverse(&self) -> ManhattanDir {
         match self {
             ManhattanDir::N => ManhattanDir::S,

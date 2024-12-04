@@ -5,7 +5,9 @@ use std::{
     str::FromStr,
 };
 
-use crate::multidim::{map_width_height, to_map, DirType, Position, RingIterator, RowMajorPositionIterator};
+use crate::multidim::{
+    map_width_height, to_map, DirType, Position, RingIterator, RowMajorPositionIterator,
+};
 
 pub type GridDigitWorld = GridWorld<ModNumC<u8, 10>>;
 pub type GridCharWorld = GridWorld<char>;
@@ -80,7 +82,7 @@ impl<V: Copy + Clone + Eq + PartialEq> GridWorld<V> {
                 map.insert(Position::from((i, j)), fill_value);
             }
         }
-        Self {map, width, height}
+        Self { map, width, height }
     }
 
     pub fn at_edge(&self, p: Position) -> bool {
