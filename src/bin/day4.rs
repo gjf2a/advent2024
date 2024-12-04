@@ -19,33 +19,30 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn part1(world: GridCharWorld) -> usize {
-    let mut count = 0;
     let target = vec!['X', 'M', 'A', 'S'];
-    for (p, c) in world.position_value_iter() {
-        if *c == 'X' {
-            count += all::<Dir>()
-                .map(|d| world.values_from(*p, d, target.len()))
+    world
+        .position_iter()
+        .map(|p| {
+            all::<Dir>()
+                .map(|d| world.values_from(p, d, target.len()))
                 .filter(|streak| *streak == target)
-                .count();
-        }
-    }
-    count
+                .count()
+        })
+        .sum()
 }
 
 fn part2(world: GridCharWorld) -> usize {
-    let mut count = 0;
     let target = vec!['M', 'A', 'S'];
     let diags = vec![Dir::Nw, Dir::Sw, Dir::Ne, Dir::Se];
-    for (p, c) in world.position_value_iter() {
-        if *c == 'A' && !world.at_edge(*p) {
-            let matching_diags = diags
+    world
+        .position_value_iter()
+        .filter(|(p, c)| **c == 'A' && !world.at_edge(**p))
+        .filter(|(p, _)| {
+            diags
                 .iter()
-                .filter(|d| world.values_from(d.neighbor(*p), d.inverse(), target.len()) == target)
-                .count();
-            if matching_diags == 2 {
-                count += 1;
-            }
-        }
-    }
-    count
+                .filter(|d| world.values_from(d.neighbor(**p), d.inverse(), target.len()) == target)
+                .count()
+                == 2
+        })
+        .count()
 }
