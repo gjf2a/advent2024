@@ -18,35 +18,25 @@ struct Starts {
     y: isize,
     dx: isize,
     dy: isize,
+    x_restart: isize,
+    y_restart: isize,
     width: isize,
     height: isize,
 }
 
 impl Starts {
     fn new(d: Dir, width: isize, height: isize) -> Self {
-        let (offx, offy) = d.offset();
-        let (x, y, dx, dy);
-        if offx > 0 {
-            dy = 1;
-            y = 0;
-        } else if offx < 0 {
-            dy = -1;
-            y = height - 1;
-        } else {
-            dy = 0;
-            y = 0;
-        }
-        if offy > 0 {
-            dx = 1;
-            x = 0;
-        } else if offy < 0 {
-            dx = -1;
-            x = width - 1;
-        } else {
-            dx = 0;
-            x = 0;
-        }
-        Self {x, y, dx, dy, width, height}
+        let (x, y, dx, dy, x_restart, y_restart) = match d {
+            Dir::N => (0, height - 1, 1, 0, 0, 0),
+            Dir::Ne => (0, height - 1, 1, -1, 0, height - 2),
+            Dir::E => (0, 0, 0, 1, 0, 0),
+            Dir::Se => (0, 0, 1, 1, 0, 1),
+            Dir::S => (0, 0, 1, 0, 0, 0),
+            Dir::Sw => (0, 0, 1, 1, width - 1, 1),
+            Dir::W => (0, 0, 0, 1, width - 1, 0),
+            Dir::Nw => (0, height - 1, 1, -1, width - 1, height - 2),
+        };
+        Self {x, y, dx, dy, x_restart, y_restart, width, height}
     }
 
     fn x_in_bounds(&self) -> bool {
@@ -67,7 +57,8 @@ impl Iterator for Starts {
             self.x += self.dx;
             if !self.x_in_bounds() {
                 self.dx = 0;
-                self.x = 0;
+                self.x = self.x_restart;
+                self.y = self.y_restart;
             }
             Some(result)
         } else if self.dy != 0 {
@@ -92,9 +83,8 @@ mod tests {
     #[test]
     fn test_starts() {
         for d in all::<Dir>() {
-            let starts = Starts::new(d, 3, 2).collect::<Vec<_>>();
+            let starts = Starts::new(d, 4, 3).collect::<Vec<_>>();
             println!("{d:?}: {starts:?}");
-            println!("{:?}", Starts::new(d, 3, 2));
         }
     }
 }
