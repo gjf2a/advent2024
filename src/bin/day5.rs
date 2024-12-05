@@ -18,9 +18,16 @@ fn main() -> anyhow::Result<()> {
             } else {
                 let mut update = line.split(",").map(|n| n.parse().unwrap()).collect();
                 let correctly_ordered = passes_ordering_rule(&update, &pairs);
-                if part == Part::One && correctly_ordered || part == Part::Two && !correctly_ordered {
+                if part == Part::One && correctly_ordered || part == Part::Two && !correctly_ordered
+                {
                     if !correctly_ordered {
-                        update.sort_unstable_by(|a, b| if pairs.contains(&(*a, *b)) {Ordering::Less} else {Ordering::Greater});
+                        update.sort_unstable_by(|a, b| {
+                            if pairs.contains(&(*a, *b)) {
+                                Ordering::Less
+                            } else {
+                                Ordering::Greater
+                            }
+                        });
                     }
                     count += update[update.len() / 2];
                 }
@@ -34,7 +41,7 @@ fn main() -> anyhow::Result<()> {
 
 fn passes_ordering_rule(update: &Vec<i64>, pairs: &BTreeSet<(i64, i64)>) -> bool {
     for i in 0..update.len() {
-        for j in (i+1)..update.len() {
+        for j in (i + 1)..update.len() {
             if pairs.contains(&(update[j], update[i])) {
                 return false;
             }
