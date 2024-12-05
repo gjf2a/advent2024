@@ -4,39 +4,47 @@ use advent2024::{all_lines, chooser_main, Part};
 
 fn main() -> anyhow::Result<()> {
     chooser_main(|filename, part, _| {
-        let mut pairs = BTreeSet::new();
-        let mut count = 0;
-        let mut collecting_rules = true;
-        for line in all_lines(filename)? {
-            if collecting_rules {
-                if line.len() > 0 {
-                    let mut parts = line.split('|').map(|n| n.parse::<i64>().unwrap());
-                    pairs.insert((parts.next().unwrap(), parts.next().unwrap()));
-                } else {
-                    collecting_rules = false;
-                }
-            } else {
-                let mut update = line.split(",").map(|n| n.parse().unwrap()).collect();
-                let correctly_ordered = passes_ordering_rule(&update, &pairs);
-                if part == Part::One && correctly_ordered || part == Part::Two && !correctly_ordered
-                {
-                    if !correctly_ordered {
-                        update.sort_unstable_by(|a, b| {
-                            if pairs.contains(&(*a, *b)) {
-                                Ordering::Less
-                            } else {
-                                Ordering::Greater
-                            }
-                        });
-                    }
-                    count += update[update.len() / 2];
-                }
-            }
-        }
-        println!("{count}");
-
+        let mut lines = all_lines(filename)?;
+        let pairs = collect_rules_from(&mut lines);
+        println!("{}", add_up_medians(part, &pairs, lines));
         Ok(())
     })
+}
+
+fn collect_rules_from(lines: &mut impl Iterator<Item = String>) -> BTreeSet<(i64, i64)> {
+    let pairs = lines
+        .by_ref()
+        .take_while(|s| s.len() > 0)
+        .map(|line| {
+            let mut parts = line.split('|').map(|n| n.parse().unwrap());
+            (parts.next().unwrap(), parts.next().unwrap())
+        })
+        .collect();
+    pairs
+}
+
+fn add_up_medians(
+    part: Part,
+    pairs: &BTreeSet<(i64, i64)>,
+    lines: impl Iterator<Item = String>,
+) -> i64 {
+    let mut count = 0;
+    for line in lines {
+        let mut update = line.split(",").map(|n| n.parse().unwrap()).collect();
+        if (part == Part::One) == passes_ordering_rule(&update, pairs) {
+            if part == Part::Two {
+                update.sort_unstable_by(|a, b| {
+                    if pairs.contains(&(*a, *b)) {
+                        Ordering::Less
+                    } else {
+                        Ordering::Greater
+                    }
+                });
+            }
+            count += update[update.len() / 2];
+        }
+    }
+    count
 }
 
 fn passes_ordering_rule(update: &Vec<i64>, pairs: &BTreeSet<(i64, i64)>) -> bool {
