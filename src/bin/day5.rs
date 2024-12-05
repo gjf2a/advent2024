@@ -6,22 +6,22 @@ fn main() -> anyhow::Result<()> {
     chooser_main(|filename, part, _| {
         let mut pairs = BTreeSet::new();
         let mut count = 0;
-        let mut phase1 = true;
+        let mut collecting_rules = true;
         for line in all_lines(filename)? {
-            if phase1 {
+            if collecting_rules {
                 if line.len() > 0 {
                     let mut parts = line.split('|').map(|n| n.parse::<i64>().unwrap());
                     pairs.insert((parts.next().unwrap(), parts.next().unwrap()));
                 } else {
-                    phase1 = false;
+                    collecting_rules = false;
                 }
             } else {
                 let mut update = line.split(",").map(|n| n.parse().unwrap()).collect();
                 let correctly_ordered = passes_ordering_rule(&update, &pairs);
-                if part == Part::One && correctly_ordered {
-                    count += update[update.len() / 2];
-                } else if part == Part::Two && !correctly_ordered {
-                    update.sort_unstable_by(|a, b| if pairs.contains(&(*a, *b)) {Ordering::Less} else {Ordering::Greater});
+                if part == Part::One && correctly_ordered || part == Part::Two && !correctly_ordered {
+                    if !correctly_ordered {
+                        update.sort_unstable_by(|a, b| if pairs.contains(&(*a, *b)) {Ordering::Less} else {Ordering::Greater});
+                    }
                     count += update[update.len() / 2];
                 }
             }
