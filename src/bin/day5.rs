@@ -1,6 +1,6 @@
-use std::collections::BTreeSet;
+use std::{cmp::Ordering, collections::BTreeSet};
 
-use advent2024::{all_lines, chooser_main};
+use advent2024::{all_lines, chooser_main, Part};
 
 fn main() -> anyhow::Result<()> {
     chooser_main(|filename, part, _| {
@@ -16,8 +16,12 @@ fn main() -> anyhow::Result<()> {
                     phase1 = false;
                 }
             } else {
-                let update = line.split(",").map(|n| n.parse().unwrap()).collect();
-                if passes_ordering_rule(&update, &pairs) {
+                let mut update = line.split(",").map(|n| n.parse().unwrap()).collect();
+                let correctly_ordered = passes_ordering_rule(&update, &pairs);
+                if part == Part::One && correctly_ordered {
+                    count += update[update.len() / 2];
+                } else if part == Part::Two && !correctly_ordered {
+                    update.sort_unstable_by(|a, b| if pairs.contains(&(*a, *b)) {Ordering::Less} else {Ordering::Greater});
                     count += update[update.len() / 2];
                 }
             }
