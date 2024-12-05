@@ -14,11 +14,9 @@ fn main() -> anyhow::Result<()> {
                     pairs.insert((parts.next().unwrap(), parts.next().unwrap()));
                 } else {
                     phase1 = false;
-                    println!("{pairs:?}")
                 }
             } else {
                 let update = line.split(",").map(|n| n.parse().unwrap()).collect();
-                println!("{update:?}");
                 if passes_ordering_rule(&update, &pairs) {
                     count += update[update.len() / 2];
                 }
