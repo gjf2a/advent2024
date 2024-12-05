@@ -12,15 +12,14 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn collect_rules_from(lines: &mut impl Iterator<Item = String>) -> BTreeSet<(i64, i64)> {
-    let pairs = lines
+    lines
         .by_ref()
         .take_while(|s| s.len() > 0)
         .map(|line| {
             let mut parts = line.split('|').map(|n| n.parse().unwrap());
             (parts.next().unwrap(), parts.next().unwrap())
         })
-        .collect();
-    pairs
+        .collect()
 }
 
 fn add_up_medians(
