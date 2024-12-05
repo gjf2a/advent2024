@@ -9,13 +9,6 @@ use std::hash::Hash;
 use std::ops::Add;
 use trait_set::trait_set;
 
-// Searchers to provide:
-//
-// DFS based on Advent of Code 2021, Day 12
-// * Provide:
-//   * a successor function
-//   * a path-so-far filter
-
 trait_set! {
     pub trait SearchNode = Eq + Clone + Debug + Hash;
     pub trait Priority = Num + Eq + PartialEq + Add<Output=Self> + Ord + PartialOrd + Display + Copy + Clone + Debug;
