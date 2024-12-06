@@ -357,7 +357,7 @@ where
 impl<T, S> SearchIterator<T, S, ParentMapQueue<T, VecDeque<T>>>
 where
     T: Clone + Eq + Debug + Hash,
-    S: FnMut(&T, &mut ParentMapQueue<T, VecDeque<T>>) -> ContinueSearch, 
+    S: FnMut(&T, &mut ParentMapQueue<T, VecDeque<T>>) -> ContinueSearch,
 {
     pub fn breadth_first(start: T, add_successors: S) -> Self {
         Self::new(start, ParentMapQueue::new(), add_successors)

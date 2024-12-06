@@ -15,7 +15,7 @@ fn main() -> anyhow::Result<()> {
             "{}",
             match part {
                 Part::One => part1(&patrol_map),
-                Part::Two => todo!()//part2(&patrol_map),
+                Part::Two => todo!(), //part2(&patrol_map),
             }
         );
         Ok(())
@@ -23,12 +23,13 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn part1(patrol_map: &GridCharWorld) -> usize {
-    let guard = Guard::new(patrol_map);
-    let mut visited = hash_set!(guard.p);
-    for g in (GuardIterator {guard, patrol_map}) {
-        visited.insert(g.p);
+    GuardIterator {
+        guard: Some(Guard::new(patrol_map)),
+        patrol_map,
     }
-    visited.len()
+    .map(|g| g.p)
+    .collect::<HashSet<_>>()
+    .len()
 }
 /*
 fn part2(patrol_map: &GridCharWorld) -> usize {
@@ -73,28 +74,35 @@ impl Guard {
             facing: ManhattanDir::N,
         }
     }
-
-    fn repeat(&self, prev_self: &Guard) -> bool {
-        self.p == prev_self.p && self.facing == prev_self.facing
-    }
 }
 
 struct GuardIterator<'a> {
-    guard: Guard,
+    guard: Option<Guard>,
     patrol_map: &'a GridCharWorld,
 }
 
 impl<'a> Iterator for GuardIterator<'a> {
     type Item = Guard;
-    
+
     fn next(&mut self) -> Option<Self::Item> {
-        let ahead = self.guard.facing.neighbor(self.guard.p);
-        self.patrol_map.value(ahead).map(|ahead_value| {
-            match ahead_value {
-                '#' => self.guard.facing = self.guard.facing.clockwise(),
-                _ => self.guard.p = ahead,
-            }
-            self.guard
-        })
+        let prev = self.guard;
+        self.guard = self
+            .guard
+            .map(|g| (g, g.facing.neighbor(g.p)))
+            .and_then(|(g, ahead)| {
+                self.patrol_map
+                    .value(ahead)
+                    .map(|ahead_value| match ahead_value {
+                        '#' => Guard {
+                            p: g.p,
+                            facing: g.facing.clockwise(),
+                        },
+                        _ => Guard {
+                            p: ahead,
+                            facing: g.facing,
+                        },
+                    })
+            });
+        prev
     }
 }
