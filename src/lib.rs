@@ -6,7 +6,8 @@ use std::{
     env,
     fs::{self, File},
     io::{self, BufRead, BufReader, Lines},
-    str::FromStr, time::Instant,
+    str::FromStr,
+    time::Instant,
 };
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]

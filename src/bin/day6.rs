@@ -66,8 +66,6 @@ impl Guard {
             .position_value_iter()
             .find(|(_, v)| **v == '^')
             .unwrap();
-        let mut path = HashSet::new();
-        path.insert(*p);
         Self {
             at: *p,
             facing: ManhattanDir::N,
