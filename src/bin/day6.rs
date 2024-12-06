@@ -21,8 +21,8 @@ fn main() -> anyhow::Result<()> {
 
 fn part1(patrol_map: &GridCharWorld) -> usize {
     Guard::new(patrol_map)
-        .travel(patrol_map)
-        .map(|g| g.p)
+        .travel_to_exit(patrol_map)
+        .map(|g| g.at)
         .collect::<HashSet<_>>()
         .len()
 }
@@ -30,12 +30,12 @@ fn part1(patrol_map: &GridCharWorld) -> usize {
 fn part2(patrol_map: &GridCharWorld) -> usize {
     let mut cyclic_barriers = HashSet::new();
     let guard = Guard::new(patrol_map);
-    for pose in guard.travel(patrol_map).skip(1) {
-        if !cyclic_barriers.contains(&pose.p) {
+    for pose in guard.travel_to_exit(patrol_map).skip(1) {
+        if !cyclic_barriers.contains(&pose.at) {
             let mut alternate_world = patrol_map.clone();
-            alternate_world.update(pose.p, '#');
+            alternate_world.update(pose.at, '#');
             if has_cycle(&alternate_world, guard) {
-                cyclic_barriers.insert(pose.p);
+                cyclic_barriers.insert(pose.at);
             }
         }
     }
@@ -44,7 +44,7 @@ fn part2(patrol_map: &GridCharWorld) -> usize {
 
 fn has_cycle(patrol_map: &GridCharWorld, guard: Guard) -> bool {
     let mut visited = HashSet::new();
-    for g in guard.travel(patrol_map) {
+    for g in guard.travel_to_exit(patrol_map) {
         if visited.contains(&g) {
             return true;
         }
@@ -55,7 +55,7 @@ fn has_cycle(patrol_map: &GridCharWorld, guard: Guard) -> bool {
 
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug)]
 struct Guard {
-    p: Position,
+    at: Position,
     facing: ManhattanDir,
 }
 
@@ -68,12 +68,12 @@ impl Guard {
         let mut path = HashSet::new();
         path.insert(*p);
         Self {
-            p: *p,
+            at: *p,
             facing: ManhattanDir::N,
         }
     }
 
-    fn travel<'a>(&self, patrol_map: &'a GridCharWorld) -> GuardTravelIterator<'a> {
+    fn travel_to_exit<'a>(&self, patrol_map: &'a GridCharWorld) -> GuardTravelIterator<'a> {
         GuardTravelIterator {
             guard: Some(*self),
             patrol_map,
@@ -93,17 +93,17 @@ impl<'a> Iterator for GuardTravelIterator<'a> {
         let prev = self.guard;
         self.guard = self
             .guard
-            .map(|g| (g, g.facing.neighbor(g.p)))
+            .map(|g| (g, g.facing.neighbor(g.at)))
             .and_then(|(g, ahead)| {
                 self.patrol_map
                     .value(ahead)
                     .map(|ahead_value| match ahead_value {
                         '#' => Guard {
-                            p: g.p,
+                            at: g.at,
                             facing: g.facing.clockwise(),
                         },
                         _ => Guard {
-                            p: ahead,
+                            at: ahead,
                             facing: g.facing,
                         },
                     })
