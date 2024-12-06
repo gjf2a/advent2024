@@ -78,6 +78,20 @@ impl Guard {
             patrol_map,
         }
     }
+
+    fn go(&self, destination: Position) -> Self {
+        Self {
+            at: destination,
+            facing: self.facing,
+        }
+    }
+
+    fn turn(&self) -> Self {
+        Self {
+            at: self.at,
+            facing: self.facing.clockwise(),
+        }
+    }
 }
 
 struct GuardTravelIterator<'a> {
@@ -97,14 +111,8 @@ impl<'a> Iterator for GuardTravelIterator<'a> {
                 self.patrol_map
                     .value(ahead)
                     .map(|ahead_value| match ahead_value {
-                        '#' => Guard {
-                            at: g.at,
-                            facing: g.facing.clockwise(),
-                        },
-                        _ => Guard {
-                            at: ahead,
-                            facing: g.facing,
-                        },
+                        '#' => g.turn(),
+                        _ => g.go(ahead),
                     })
             });
         prev
