@@ -6,6 +6,7 @@ use advent2024::{
     multidim::{DirType, ManhattanDir, Position},
     Part,
 };
+use common_macros::hash_set;
 
 fn main() -> anyhow::Result<()> {
     chooser_main(|filename, part, _| {
@@ -14,7 +15,7 @@ fn main() -> anyhow::Result<()> {
             "{}",
             match part {
                 Part::One => part1(&patrol_map),
-                Part::Two => part2(&patrol_map),
+                Part::Two => todo!()//part2(&patrol_map),
             }
         );
         Ok(())
@@ -22,11 +23,14 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn part1(patrol_map: &GridCharWorld) -> usize {
-    let mut guard = Guard::new(&patrol_map);
-    while guard.go(&patrol_map) == InMap::Yes {}
-    guard.path.len()
+    let guard = Guard::new(patrol_map);
+    let mut visited = hash_set!(guard.p);
+    for g in (GuardIterator {guard, patrol_map}) {
+        visited.insert(g.p);
+    }
+    visited.len()
 }
-
+/*
 fn part2(patrol_map: &GridCharWorld) -> usize {
     let guard = Guard::new(&patrol_map);
     patrol_map
@@ -49,12 +53,11 @@ fn has_cycle(mut guard: Guard, patrol_map: &GridCharWorld) -> bool {
     }
     false
 }
-
-#[derive(Clone)]
+*/
+#[derive(Clone, Copy, Eq, PartialEq, Hash, Debug)]
 struct Guard {
     p: Position,
     facing: ManhattanDir,
-    path: HashSet<Position>,
 }
 
 impl Guard {
@@ -68,34 +71,30 @@ impl Guard {
         Self {
             p: *p,
             facing: ManhattanDir::N,
-            path,
         }
     }
 
     fn repeat(&self, prev_self: &Guard) -> bool {
         self.p == prev_self.p && self.facing == prev_self.facing
     }
-
-    fn go(&mut self, world: &GridCharWorld) -> InMap {
-        let ahead = self.facing.neighbor(self.p);
-        match world.value(ahead) {
-            None => InMap::No,
-            Some(obstacle) => {
-                match obstacle {
-                    '#' => self.facing = self.facing.clockwise(),
-                    _ => {
-                        self.p = ahead;
-                        self.path.insert(ahead);
-                    }
-                }
-                InMap::Yes
-            }
-        }
-    }
 }
 
-#[derive(Copy, Clone, Eq, PartialEq)]
-enum InMap {
-    Yes,
-    No,
+struct GuardIterator<'a> {
+    guard: Guard,
+    patrol_map: &'a GridCharWorld,
+}
+
+impl<'a> Iterator for GuardIterator<'a> {
+    type Item = Guard;
+    
+    fn next(&mut self) -> Option<Self::Item> {
+        let ahead = self.guard.facing.neighbor(self.guard.p);
+        self.patrol_map.value(ahead).map(|ahead_value| {
+            match ahead_value {
+                '#' => self.guard.facing = self.guard.facing.clockwise(),
+                _ => self.guard.p = ahead,
+            }
+            self.guard
+        })
+    }
 }

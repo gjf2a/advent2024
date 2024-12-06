@@ -321,6 +321,77 @@ where
     }
 }
 
+pub struct SearchIterator<T, S, Q>
+where
+    T: Clone,
+    Q: SearchQueue<T>,
+    S: FnMut(&T, &mut Q) -> ContinueSearch,
+{
+    last_value: Option<T>,
+    open_list: Q,
+    add_successors: S,
+    enqueued: usize,
+    dequeued: usize,
+    stopped: bool,
+}
+
+impl<T, S, Q> SearchIterator<T, S, Q>
+where
+    T: Clone,
+    Q: SearchQueue<T>,
+    S: FnMut(&T, &mut Q) -> ContinueSearch,
+{
+    pub fn new(start: T, mut open_list: Q, add_successors: S) -> Self {
+        open_list.enqueue(&start);
+        Self {
+            open_list,
+            add_successors,
+            last_value: None,
+            enqueued: 0,
+            dequeued: 0,
+            stopped: false,
+        }
+    }
+}
+
+impl<T, S> SearchIterator<T, S, ParentMapQueue<T, VecDeque<T>>>
+where
+    T: Clone + Eq + Debug + Hash,
+    S: FnMut(&T, &mut ParentMapQueue<T, VecDeque<T>>) -> ContinueSearch, 
+{
+    pub fn breadth_first(start: T, add_successors: S) -> Self {
+        Self::new(start, ParentMapQueue::new(), add_successors)
+    }
+}
+
+impl<T, S, Q> Iterator for SearchIterator<T, S, Q>
+where
+    T: Clone,
+    Q: SearchQueue<T>,
+    S: FnMut(&T, &mut Q) -> ContinueSearch,
+{
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.stopped {
+            None
+        } else {
+            self.open_list.dequeue().map(|candidate| {
+                self.dequeued += 1;
+                let before = self.open_list.len();
+                let cont = (self.add_successors)(&candidate, &mut self.open_list);
+                assert!(self.open_list.len() >= before);
+                self.enqueued += self.open_list.len() - before;
+                if cont == ContinueSearch::No {
+                    self.stopped = true;
+                }
+                self.last_value = Some(candidate.clone());
+                candidate
+            })
+        }
+    }
+}
+
 pub fn breadth_first_search<T, S>(start_value: &T, add_successors: S) -> ParentMap<T>
 where
     T: SearchNode,
@@ -464,3 +535,6 @@ impl AdjacencySets {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {}
