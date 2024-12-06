@@ -30,11 +30,13 @@ fn part1(patrol_map: &GridCharWorld) -> usize {
 fn part2(patrol_map: &GridCharWorld) -> usize {
     let mut cyclic_barriers = HashSet::new();
     let guard = Guard::new(patrol_map);
-    for position in guard.travel(patrol_map).skip(1) {
-        let mut alternate_world = patrol_map.clone();
-        alternate_world.update(position.p, '#');
-        if has_cycle(&alternate_world, guard) {
-            cyclic_barriers.insert(position.p);
+    for pose in guard.travel(patrol_map).skip(1) {
+        if !cyclic_barriers.contains(&pose.p) {
+            let mut alternate_world = patrol_map.clone();
+            alternate_world.update(pose.p, '#');
+            if has_cycle(&alternate_world, guard) {
+                cyclic_barriers.insert(pose.p);
+            }
         }
     }
     cyclic_barriers.len()
