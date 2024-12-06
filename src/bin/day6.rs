@@ -28,18 +28,18 @@ fn part1(patrol_map: &GridCharWorld) -> usize {
 }
 
 fn part2(patrol_map: &GridCharWorld) -> usize {
-    let mut num_cycles = 0;
+    let mut cyclic_barriers = HashSet::new();
     let guard = Guard::new(patrol_map);
     let mut last = guard;
     for position in guard.travel(patrol_map).skip(1) {
         let mut alternate_world = patrol_map.clone();
         alternate_world.update(position.p, '#');
         if has_cycle(&alternate_world, last) {
-            num_cycles += 1;
+            cyclic_barriers.insert(position.p);
         }
         last = position;
     }
-    num_cycles
+    cyclic_barriers.len()
 }
 
 fn has_cycle(patrol_map: &GridCharWorld, guard: Guard) -> bool {
