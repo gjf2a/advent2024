@@ -1,10 +1,5 @@
 use std::collections::HashSet;
 
-// 1630 is too high
-// 1472 is too low
-// To get down to 1472, I ruled out barriers that sometimes caused cycles but other times did not cause cycles.
-// Bug: I just needed to start at the beginning every time, not the previous location.
-
 use advent2024::{
     chooser_main,
     grid::GridCharWorld,
@@ -34,18 +29,14 @@ fn part1(patrol_map: &GridCharWorld) -> usize {
 
 fn part2(patrol_map: &GridCharWorld) -> usize {
     let mut cyclic_barriers = HashSet::new();
-    let mut not_cyclic_barriers = HashSet::new();
     let guard = Guard::new(patrol_map);
     for position in guard.travel(patrol_map).skip(1) {
         let mut alternate_world = patrol_map.clone();
         alternate_world.update(position.p, '#');
         if has_cycle(&alternate_world, guard) {
             cyclic_barriers.insert(position.p);
-        } else {
-            not_cyclic_barriers.insert(position.p);
         }
     }
-    //cyclic_barriers.iter().filter(|p| !not_cyclic_barriers.contains(p)).count()
     cyclic_barriers.len()
 }
 

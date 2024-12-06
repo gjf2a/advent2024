@@ -6,7 +6,7 @@ use std::{
     env,
     fs::{self, File},
     io::{self, BufRead, BufReader, Lines},
-    str::FromStr,
+    str::FromStr, time::Instant,
 };
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
@@ -28,15 +28,18 @@ impl FromStr for Part {
 }
 
 pub fn chooser_main(code: fn(&str, Part, &[String]) -> anyhow::Result<()>) -> anyhow::Result<()> {
+    let start = Instant::now();
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
         println!("Usage: {} filename [one|two] [options]", args[0]);
-        Ok(())
     } else if args.len() == 2 {
-        code(args[1].as_str(), Part::One, &[])
+        code(args[1].as_str(), Part::One, &[])?;
     } else {
-        code(args[1].as_str(), args[2].parse().unwrap(), &args[3..])
+        code(args[1].as_str(), args[2].parse().unwrap(), &args[3..])?;
     }
+    let duration = Instant::now().duration_since(start);
+    println!("duration: {} ms", duration.as_millis());
+    Ok(())
 }
 
 pub fn all_lines_wrap(filename: &str) -> io::Result<Lines<BufReader<File>>> {
