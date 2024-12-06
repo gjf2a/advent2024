@@ -6,55 +6,53 @@ use advent2024::{
     multidim::{DirType, ManhattanDir, Position},
     Part,
 };
-use common_macros::hash_set;
 
 fn main() -> anyhow::Result<()> {
     chooser_main(|filename, part, _| {
         let patrol_map = GridCharWorld::from_char_file(filename)?;
-        println!(
-            "{}",
-            match part {
-                Part::One => part1(&patrol_map),
-                Part::Two => todo!(), //part2(&patrol_map),
-            }
-        );
+        let result = match part {
+            Part::One => part1(&patrol_map),
+            Part::Two => part2(&patrol_map),
+        };
+        println!("{result}");
         Ok(())
     })
 }
 
 fn part1(patrol_map: &GridCharWorld) -> usize {
-    GuardIterator {
-        guard: Some(Guard::new(patrol_map)),
-        patrol_map,
-    }
-    .map(|g| g.p)
-    .collect::<HashSet<_>>()
-    .len()
-}
-/*
-fn part2(patrol_map: &GridCharWorld) -> usize {
-    let guard = Guard::new(&patrol_map);
-    patrol_map
-        .position_iter()
-        .filter(|p| *p != guard.p)
-        .filter(|p| {
-            let mut candidate_map = patrol_map.clone();
-            candidate_map.update(*p, '#');
-            has_cycle(guard.clone(), &patrol_map)
-        })
-        .count()
+    Guard::new(patrol_map)
+        .travel(patrol_map)
+        .map(|g| g.p)
+        .collect::<HashSet<_>>()
+        .len()
 }
 
-fn has_cycle(mut guard: Guard, patrol_map: &GridCharWorld) -> bool {
-    let guard_start = guard.clone();
-    while guard.go(&patrol_map) == InMap::Yes {
-        if guard.repeat(&guard_start) {
+fn part2(patrol_map: &GridCharWorld) -> usize {
+    let mut num_cycles = 0;
+    let guard = Guard::new(patrol_map);
+    let mut last = guard;
+    for position in guard.travel(patrol_map).skip(1) {
+        let mut alternate_world = patrol_map.clone();
+        alternate_world.update(position.p, '#');
+        if has_cycle(&alternate_world, last) {
+            num_cycles += 1;
+        }
+        last = position;
+    }
+    num_cycles
+}
+
+fn has_cycle(patrol_map: &GridCharWorld, guard: Guard) -> bool {
+    let mut visited = HashSet::new();
+    for g in guard.travel(patrol_map) {
+        if visited.contains(&g) {
             return true;
         }
+        visited.insert(g);
     }
     false
 }
-*/
+
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug)]
 struct Guard {
     p: Position,
@@ -74,14 +72,21 @@ impl Guard {
             facing: ManhattanDir::N,
         }
     }
+
+    fn travel<'a>(&self, patrol_map: &'a GridCharWorld) -> GuardTravelIterator<'a> {
+        GuardTravelIterator {
+            guard: Some(*self),
+            patrol_map,
+        }
+    }
 }
 
-struct GuardIterator<'a> {
+struct GuardTravelIterator<'a> {
     guard: Option<Guard>,
     patrol_map: &'a GridCharWorld,
 }
 
-impl<'a> Iterator for GuardIterator<'a> {
+impl<'a> Iterator for GuardTravelIterator<'a> {
     type Item = Guard;
 
     fn next(&mut self) -> Option<Self::Item> {
