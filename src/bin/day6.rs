@@ -104,17 +104,13 @@ impl<'a> Iterator for GuardTravelIterator<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let prev = self.guard;
-        self.guard = self
-            .guard
-            .map(|g| (g, g.facing.neighbor(g.at)))
-            .and_then(|(g, ahead)| {
-                self.patrol_map
-                    .value(ahead)
-                    .map(|ahead_value| match ahead_value {
-                        '#' => g.turn(),
-                        _ => g.go(ahead),
-                    })
-            });
+        self.guard = self.guard.and_then(|g| {
+            let ahead = g.facing.neighbor(g.at);
+            self.patrol_map.value(ahead).map(|c| match c {
+                '#' => g.turn(),
+                _ => g.go(ahead),
+            })
+        });
         prev
     }
 }
