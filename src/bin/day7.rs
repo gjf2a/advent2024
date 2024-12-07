@@ -1,4 +1,4 @@
-use advent2024::{all_lines, chooser_main, ComboIterator, Part};
+use advent2024::{all_lines, chooser_main, combinations::ComboIterator, Part};
 
 fn main() -> anyhow::Result<()> {
     chooser_main(|filename, part, _| {

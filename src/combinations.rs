@@ -17,21 +17,14 @@ impl<T: Copy + Clone, I: Iterator<Item = T> + Clone> ComboIterator<T, I> {
             prev: Some(start),
         }
     }
-}
 
-impl<T: Copy + Clone, I: Iterator<Item = T> + Clone> Iterator for ComboIterator<T, I> {
-    type Item = Vec<T>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let result = self.prev.clone();
+    fn advance(&mut self) {
         if let Some(prev) = &mut self.prev {
-            let mut finished = true;
             for i in 0..self.entries.len() {
                 match self.entries[i].next() {
                     Some(updated) => {
                         prev[i] = updated;
-                        finished = false;
-                        break;
+                        return;
                     }
                     None => {
                         self.entries[i] = self.iter.clone();
@@ -39,10 +32,17 @@ impl<T: Copy + Clone, I: Iterator<Item = T> + Clone> Iterator for ComboIterator<
                     }
                 }
             }
-            if finished {
-                self.prev = None;
-            }
+            self.prev = None;
         }
+    }
+}
+
+impl<T: Copy + Clone, I: Iterator<Item = T> + Clone> Iterator for ComboIterator<T, I> {
+    type Item = Vec<T>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let result = self.prev.clone();
+        self.advance();
         result
     }
 }
