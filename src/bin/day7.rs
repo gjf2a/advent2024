@@ -60,7 +60,47 @@ impl Op {
         match self {
             Self::Plus => op1 + op2,
             Self::Times => op1 * op2,
-            Self::Concat => format!("{op1}{op2}").parse().unwrap(),
+            Self::Concat => concat(op1, op2),
+        }
+    }
+}
+
+fn concat(n1: i64, n2: i64) -> i64 {
+    n1 * 10_i64.pow(log10(n2) + 1) + n2
+}
+
+fn log10(mut n: i64) -> u32 {
+    let mut result = 0;
+    while n >= 10 {
+        n /= 10;
+        result += 1;
+    }
+    result
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{concat, log10};
+
+    #[test]
+    fn test_log() {
+        for (n, l) in [
+            (1, 0),
+            (9, 0),
+            (10, 1),
+            (99, 1),
+            (100, 2),
+            (999, 2),
+            (1000, 3),
+        ] {
+            assert_eq!(log10(n), l);
+        }
+    }
+
+    #[test]
+    fn test_concat() {
+        for (n1, n2) in [(12, 345), (10, 20), (133, 8)] {
+            assert_eq!(concat(n1, n2), format!("{n1}{n2}").parse::<i64>().unwrap());
         }
     }
 }

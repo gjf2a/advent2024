@@ -1,7 +1,7 @@
+pub mod combinations;
 pub mod grid;
 pub mod multidim;
 pub mod searchers;
-pub mod combinations;
 
 use std::{
     env,
@@ -57,7 +57,9 @@ mod tests {
     use enum_iterator::all;
 
     use crate::{
-        combinations::ComboIterator, multidim::{Dir, DirType, ManhattanDir, Position, RowMajorPositionIterator}, searchers::{breadth_first_search, AdjacencySets, ContinueSearch, SearchQueue}
+        combinations::ComboIterator,
+        multidim::{Dir, DirType, ManhattanDir, Position, RowMajorPositionIterator},
+        searchers::{breadth_first_search, AdjacencySets, ContinueSearch, SearchQueue},
     };
 
     #[test]
