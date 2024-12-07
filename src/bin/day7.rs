@@ -31,13 +31,7 @@ fn parse(line: String) -> (i64, Vec<i64>) {
 }
 
 fn matching_op_combo(target: i64, nums: &Vec<i64>) -> Option<Vec<Op>> {
-    println!("\nnums: {nums:?}");
-    ComboIterator::new(all::<Op>(), nums.len() - 1)
-        .inspect(|combo| {
-            println!("combo: {combo:?}");
-            println!("result: {} (vs {target})", Op::apply(combo, nums));
-        })
-        .find(|combo| Op::apply(combo, nums) == target)
+    ComboIterator::new(all::<Op>(), nums.len() - 1).find(|combo| Op::apply(combo, nums) == target)
 }
 
 #[derive(Copy, Clone, Sequence, Debug)]
