@@ -60,8 +60,15 @@ pub struct ComboIterator<T: Clone, I: Iterator<Item = T> + Clone> {
 impl<T: Copy + Clone, I: Iterator<Item = T> + Clone> ComboIterator<T, I> {
     pub fn new(iter: I, num_entries: usize) -> Self {
         let mut entries = (0..num_entries).map(|_| iter.clone()).collect::<Vec<_>>();
-        let start = entries.iter_mut().map(|i| i.next().unwrap()).collect::<Vec<_>>();
-        Self {iter, entries, prev: Some(start)}
+        let start = entries
+            .iter_mut()
+            .map(|i| i.next().unwrap())
+            .collect::<Vec<_>>();
+        Self {
+            iter,
+            entries,
+            prev: Some(start),
+        }
     }
 }
 
@@ -89,7 +96,6 @@ impl<T: Copy + Clone, I: Iterator<Item = T> + Clone> Iterator for ComboIterator<
                     }
                 }
             }
-
         }
         result
     }
@@ -101,7 +107,8 @@ mod tests {
 
     use crate::{
         multidim::{Dir, DirType, ManhattanDir, Position, RowMajorPositionIterator},
-        searchers::{breadth_first_search, AdjacencySets, ContinueSearch, SearchQueue}, ComboIterator,
+        searchers::{breadth_first_search, AdjacencySets, ContinueSearch, SearchQueue},
+        ComboIterator,
     };
 
     #[test]
