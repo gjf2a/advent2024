@@ -1,5 +1,4 @@
 use advent2024::{all_lines, chooser_main, ComboIterator, Part};
-use enum_iterator::{all, Sequence};
 
 fn main() -> anyhow::Result<()> {
     chooser_main(|filename, part, _| {
@@ -7,11 +6,11 @@ fn main() -> anyhow::Result<()> {
         let mut total = 0;
         for line in all_lines(filename)? {
             let (target, nums) = parse(line);
-            let value = match part {
-                Part::One => matching_op_combo([Op::Plus, Op::Times].iter().copied(), target, &nums),
-                Part::Two => matching_op_combo(all::<Op>(), target, &nums)
+            let iter = match part {
+                Part::One => [Op::Plus, Op::Times].iter(),
+                Part::Two => [Op::Plus, Op::Times, Op::Concat].iter(),
             };
-            if value.is_some() {
+            if matching_op_combo(iter.copied(), target, &nums).is_some() {
                 total += target;
             }
         }
@@ -23,22 +22,24 @@ fn main() -> anyhow::Result<()> {
 fn parse(line: String) -> (i64, Vec<i64>) {
     let mut parts_a = line.split(':');
     let target = parts_a.next().unwrap().parse::<i64>().unwrap();
-    (
-        target,
-        parts_a
-            .next()
-            .unwrap()
-            .split_whitespace()
-            .map(|s| s.parse::<i64>().unwrap())
-            .collect(),
-    )
+    let nums = parts_a
+        .next()
+        .unwrap()
+        .split_whitespace()
+        .map(|s| s.parse::<i64>().unwrap())
+        .collect();
+    (target, nums)
 }
 
-fn matching_op_combo(iter: impl Iterator<Item = Op> + Clone, target: i64, nums: &Vec<i64>) -> Option<Vec<Op>> {
+fn matching_op_combo(
+    iter: impl Iterator<Item = Op> + Clone,
+    target: i64,
+    nums: &Vec<i64>,
+) -> Option<Vec<Op>> {
     ComboIterator::new(iter, nums.len() - 1).find(|combo| Op::apply(combo, nums) == target)
 }
 
-#[derive(Copy, Clone, Sequence, Debug)]
+#[derive(Copy, Clone, Debug)]
 enum Op {
     Plus,
     Times,

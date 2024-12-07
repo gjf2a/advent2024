@@ -78,23 +78,22 @@ impl<T: Copy + Clone, I: Iterator<Item = T> + Clone> Iterator for ComboIterator<
     fn next(&mut self) -> Option<Self::Item> {
         let result = self.prev.clone();
         if let Some(prev) = &mut self.prev {
-            let mut i = 0;
-            loop {
+            let mut finished = true;
+            for i in 0..self.entries.len() {
                 match self.entries[i].next() {
                     Some(updated) => {
                         prev[i] = updated;
+                        finished = false;
                         break;
                     }
                     None => {
                         self.entries[i] = self.iter.clone();
                         prev[i] = self.entries[i].next().unwrap();
-                        i += 1;
-                        if i == self.entries.len() {
-                            self.prev = None;
-                            break;
-                        }
                     }
                 }
+            }
+            if finished {
+                self.prev = None;
             }
         }
         result
