@@ -46,3 +46,37 @@ impl<T: Copy + Clone, I: Iterator<Item = T> + Clone> Iterator for ComboIterator<
         result
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use enum_iterator::all;
+
+    use crate::multidim::ManhattanDir;
+
+    use super::ComboIterator;
+
+    #[test]
+    fn combo_test() {
+        let expected = vec![
+            vec![ManhattanDir::N, ManhattanDir::N],
+            vec![ManhattanDir::E, ManhattanDir::N],
+            vec![ManhattanDir::S, ManhattanDir::N],
+            vec![ManhattanDir::W, ManhattanDir::N],
+            vec![ManhattanDir::N, ManhattanDir::E],
+            vec![ManhattanDir::E, ManhattanDir::E],
+            vec![ManhattanDir::S, ManhattanDir::E],
+            vec![ManhattanDir::W, ManhattanDir::E],
+            vec![ManhattanDir::N, ManhattanDir::S],
+            vec![ManhattanDir::E, ManhattanDir::S],
+            vec![ManhattanDir::S, ManhattanDir::S],
+            vec![ManhattanDir::W, ManhattanDir::S],
+            vec![ManhattanDir::N, ManhattanDir::W],
+            vec![ManhattanDir::E, ManhattanDir::W],
+            vec![ManhattanDir::S, ManhattanDir::W],
+            vec![ManhattanDir::W, ManhattanDir::W],
+        ];
+        for (i, combo) in ComboIterator::new(all::<ManhattanDir>(), 2).enumerate() {
+            assert_eq!(expected[i], combo);
+        }
+    }
+}

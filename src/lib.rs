@@ -57,7 +57,6 @@ mod tests {
     use enum_iterator::all;
 
     use crate::{
-        combinations::ComboIterator,
         multidim::{Dir, DirType, ManhattanDir, Position, RowMajorPositionIterator},
         searchers::{breadth_first_search, AdjacencySets, ContinueSearch, SearchQueue},
     };
@@ -191,30 +190,5 @@ mod tests {
         let path = parent_map.path_back_from(&"end".to_string()).unwrap();
         let path_str = format!("{:?}", path);
         assert_eq!(path_str, r#"["start", "A", "end"]"#);
-    }
-
-    #[test]
-    fn combo_test() {
-        let expected = vec![
-            vec![ManhattanDir::N, ManhattanDir::N],
-            vec![ManhattanDir::E, ManhattanDir::N],
-            vec![ManhattanDir::S, ManhattanDir::N],
-            vec![ManhattanDir::W, ManhattanDir::N],
-            vec![ManhattanDir::N, ManhattanDir::E],
-            vec![ManhattanDir::E, ManhattanDir::E],
-            vec![ManhattanDir::S, ManhattanDir::E],
-            vec![ManhattanDir::W, ManhattanDir::E],
-            vec![ManhattanDir::N, ManhattanDir::S],
-            vec![ManhattanDir::E, ManhattanDir::S],
-            vec![ManhattanDir::S, ManhattanDir::S],
-            vec![ManhattanDir::W, ManhattanDir::S],
-            vec![ManhattanDir::N, ManhattanDir::W],
-            vec![ManhattanDir::E, ManhattanDir::W],
-            vec![ManhattanDir::S, ManhattanDir::W],
-            vec![ManhattanDir::W, ManhattanDir::W],
-        ];
-        for (i, combo) in ComboIterator::new(all::<ManhattanDir>(), 2).enumerate() {
-            assert_eq!(expected[i], combo);
-        }
     }
 }
