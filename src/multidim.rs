@@ -4,7 +4,7 @@ use std::{
     fmt::Display,
     iter::Sum,
     mem,
-    ops::{Add, Index, IndexMut, Mul, Neg, Sub},
+    ops::{Add, AddAssign, Index, IndexMut, Mul, Neg, Sub, SubAssign},
     str::FromStr,
 };
 
@@ -106,7 +106,9 @@ impl<N: NumType + num::traits::Signed + Sum<N> + Default, const S: usize> Point<
     }
 
     pub fn abs(&self) -> Self {
-        Self {coords: self.coords.map(|c| c.abs())}
+        Self {
+            coords: self.coords.map(|c| c.abs()),
+        }
     }
 
     pub fn manhattan_neighbors(&self) -> Vec<Point<N, S>> {
@@ -152,11 +154,17 @@ impl<N: NumType + Default, const S: usize> Add for Point<N, S> {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
-        let mut result = Self::default();
-        for i in 0..S {
-            result[i] = self[i] + rhs[i];
-        }
+        let mut result = self;
+        result += rhs;
         result
+    }
+}
+
+impl<N: NumType + Default, const S: usize> AddAssign for Point<N, S> {
+    fn add_assign(&mut self, rhs: Self) {
+        for i in 0..S {
+            self[i] += rhs[i];
+        }
     }
 }
 
@@ -177,6 +185,12 @@ impl<N: NumType + Default + Neg<Output = N>, const S: usize> Sub for Point<N, S>
 
     fn sub(self, rhs: Self) -> Self::Output {
         self + -rhs
+    }
+}
+
+impl<N: NumType + Default + Neg<Output = N>, const S: usize> SubAssign for Point<N, S> {
+    fn sub_assign(&mut self, rhs: Self) {
+        *self += -rhs;
     }
 }
 
