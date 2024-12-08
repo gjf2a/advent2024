@@ -36,7 +36,7 @@ fn matching_op_combo(
     target: i64,
     nums: &Vec<i64>,
 ) -> Option<Vec<Op>> {
-    ComboIterator::new(iter, nums.len() - 1).find(|combo| Op::apply(combo, nums) == target)
+    ComboIterator::new(iter, nums.len() - 1).find(|combo| Op::is_match(combo, nums, target))
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -54,6 +54,20 @@ impl Op {
             total = ops[i].op(total, nums[i + 1]);
         }
         total
+    }
+
+    fn is_match(ops: &Vec<Self>, nums: &Vec<i64>, target: i64) -> bool {
+        assert_eq!(ops.len() + 1, nums.len());
+        let mut total = ops[0].op(nums[0], nums[1]);
+        for i in 1..ops.len() {
+            total = ops[i].op(total, nums[i + 1]);
+            if total > target {
+                return false;
+            } else if total == target {
+                return true;
+            }
+        }
+        false
     }
 
     fn op(&self, op1: i64, op2: i64) -> i64 {
