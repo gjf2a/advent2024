@@ -1,6 +1,6 @@
 use std::{cmp::Ordering, collections::BTreeSet};
 
-use advent2024::{all_lines, advent_main, Part};
+use advent2024::{advent_main, all_lines, Part};
 
 fn main() -> anyhow::Result<()> {
     advent_main(|filename, part, _| {

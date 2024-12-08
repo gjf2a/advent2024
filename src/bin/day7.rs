@@ -1,4 +1,4 @@
-use advent2024::{all_lines, advent_main, combinations::ComboIterator, Part};
+use advent2024::{advent_main, all_lines, combinations::ComboIterator, Part};
 
 const PART_1: [Op; 2] = [Op::Plus, Op::Times];
 const PART_2: [Op; 3] = [Op::Plus, Op::Times, Op::Concat];
@@ -40,15 +40,14 @@ fn parse(line: String) -> (i64, Vec<i64>) {
     (target, nums)
 }
 
-fn solve_recursive(early: bool, options: &[Op], target: i64, current: i64, nums: &[i64]) -> bool {
+fn solve_recursive(early: bool, ops: &[Op], target: i64, current: i64, nums: &[i64]) -> bool {
     if early && current > target {
         false
     } else if nums.len() == 0 {
         target == current
     } else {
-        options
-            .iter()
-            .any(|op| solve_recursive(early, options, target, op.op(current, nums[0]), &nums[1..]))
+        ops.iter()
+            .any(|op| solve_recursive(early, ops, target, op.op(current, nums[0]), &nums[1..]))
     }
 }
 
