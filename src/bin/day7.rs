@@ -1,16 +1,21 @@
 use advent2024::{all_lines, chooser_main, combinations::ComboIterator, Part};
 
+const PART_1: [Op; 2] = [Op::Plus, Op::Times];
+const PART_2: [Op; 3] = [Op::Plus, Op::Times, Op::Concat];
+
 fn main() -> anyhow::Result<()> {
-    chooser_main(|filename, part, _| {
-        println!("{filename} {part:?}");
+    chooser_main(|filename, part, options| {
+        let goadrich = options.iter().any(|s| s.as_str() == "-goadrich");
+        let ops = match part {
+            Part::One => &PART_1[..],
+            Part::Two => &PART_2[..],
+        };
         let mut total = 0;
         for line in all_lines(filename)? {
             let (target, nums) = parse(line);
-            let iter = match part {
-                Part::One => [Op::Plus, Op::Times].iter(),
-                Part::Two => [Op::Plus, Op::Times, Op::Concat].iter(),
-            };
-            if matching_op_combo(iter.copied(), target, &nums).is_some() {
+            if goadrich && solve_goadrich(ops, target, 0, &nums[..])
+                || !goadrich && solve_iterator(ops.iter().copied(), target, &nums).is_some()
+            {
                 total += target;
             }
         }
@@ -31,12 +36,24 @@ fn parse(line: String) -> (i64, Vec<i64>) {
     (target, nums)
 }
 
-fn matching_op_combo(
+fn solve_goadrich(options: &[Op], target: i64, current: i64, nums: &[i64]) -> bool {
+    if current > target {
+        false
+    } else if nums.len() == 0 {
+        target == current
+    } else {
+        options
+            .iter()
+            .any(|op| solve_goadrich(options, target, op.op(current, nums[0]), &nums[1..]))
+    }
+}
+
+fn solve_iterator(
     iter: impl Iterator<Item = Op> + Clone,
     target: i64,
     nums: &Vec<i64>,
 ) -> Option<Vec<Op>> {
-    ComboIterator::new(iter, nums.len() - 1).find(|combo| Op::is_match(combo, nums, target))
+    ComboIterator::new(iter, nums.len() - 1).find(|combo| Op::apply(combo, nums) == target)
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -54,20 +71,6 @@ impl Op {
             total = ops[i].op(total, nums[i + 1]);
         }
         total
-    }
-
-    fn is_match(ops: &Vec<Self>, nums: &Vec<i64>, target: i64) -> bool {
-        assert_eq!(ops.len() + 1, nums.len());
-        let mut total = ops[0].op(nums[0], nums[1]);
-        for i in 1..ops.len() {
-            total = ops[i].op(total, nums[i + 1]);
-            if total > target {
-                return false;
-            } else if total == target {
-                return true;
-            }
-        }
-        false
     }
 
     fn op(&self, op1: i64, op2: i64) -> i64 {
