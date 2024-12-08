@@ -105,6 +105,10 @@ impl<N: NumType + num::traits::Signed + Sum<N> + Default, const S: usize> Point<
         (0..S).map(|i| (self[i] - other[i]).abs()).sum()
     }
 
+    pub fn abs(&self) -> Self {
+        Self {coords: self.coords.map(|c| c.abs())}
+    }
+
     pub fn manhattan_neighbors(&self) -> Vec<Point<N, S>> {
         let mut result = vec![];
         for sign in [N::one(), -N::one()] {
