@@ -4,54 +4,58 @@ use advent2024::{chooser_main, grid::GridCharWorld, multidim::Position, Part};
 
 fn main() -> anyhow::Result<()> {
     chooser_main(|filename, part, _| {
-        let world = GridCharWorld::from_char_file(filename)?;
-        let antenna2locations = antenna_map(&world);
-        println!("{}", find_antinodes(part, &antenna2locations, &world).len());
+        let map = Antennae::new(filename, part)?;
+        println!("{}", map.antinodes.len());
         Ok(())
     })
 }
 
-fn find_antinodes(
-    part: Part,
-    antenna2locations: &HashMap<char, Vec<Position>>,
-    world: &GridCharWorld,
-) -> HashSet<Position> {
-    let mut antinodes = HashSet::new();
-    for (_, locations) in antenna2locations.iter() {
-        for i in 0..locations.len() {
-            for j in (i + 1)..locations.len() {
-                let diff = locations[i] - locations[j];
-                match part {
-                    Part::One => {
-                        add_antinode(&mut antinodes, locations[i] + diff, &world);
-                        add_antinode(&mut antinodes, locations[j] - diff, &world);
-                    }
-                    Part::Two => {
-                        add_antinode_streak(&mut antinodes, locations[i], diff, &world);
-                        add_antinode_streak(&mut antinodes, locations[j], -diff, &world);
-                    }
+struct Antennae {
+    world: GridCharWorld,
+    antenna2locations: HashMap<char, Vec<Position>>,
+    antinodes: HashSet<Position>,
+}
+
+impl Antennae {
+    fn new(filename: &str, part: Part) -> anyhow::Result<Self> {
+        let world = GridCharWorld::from_char_file(filename)?;
+        let antenna2locations = antenna_map(&world);
+        let mut ant = Self {
+            world,
+            antenna2locations,
+            antinodes: HashSet::new(),
+        };
+        ant.find_antinodes(part);
+        Ok(ant)
+    }
+
+    fn find_antinodes(&mut self, part: Part) {
+        for (_, locations) in self.antenna2locations.clone().iter() {
+            for i in 0..locations.len() {
+                for j in (i + 1)..locations.len() {
+                    let diff = locations[i] - locations[j];
+                    self.add_antinodes(locations[i], diff, part);
+                    self.add_antinodes(locations[j], -diff, part);
                 }
             }
         }
     }
-    antinodes
-}
 
-fn add_antinode(antinodes: &mut HashSet<Position>, candidate: Position, world: &GridCharWorld) {
-    if world.in_bounds(candidate) {
-        antinodes.insert(candidate);
-    }
-}
-
-fn add_antinode_streak(
-    antinodes: &mut HashSet<Position>,
-    mut candidate: Position,
-    diff: Position,
-    world: &GridCharWorld,
-) {
-    while world.in_bounds(candidate) {
-        antinodes.insert(candidate);
-        candidate += diff;
+    fn add_antinodes(&mut self, mut candidate: Position, diff: Position, part: Part) {
+        match part {
+            Part::One => {
+                candidate += diff;
+                if self.world.in_bounds(candidate) {
+                    self.antinodes.insert(candidate);
+                }
+            }
+            Part::Two => {
+                while self.world.in_bounds(candidate) {
+                    self.antinodes.insert(candidate);
+                    candidate += diff;
+                }
+            }
+        }
     }
 }
 
