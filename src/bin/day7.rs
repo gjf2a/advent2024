@@ -3,9 +3,13 @@ use advent2024::{all_lines, chooser_main, combinations::ComboIterator, Part};
 const PART_1: [Op; 2] = [Op::Plus, Op::Times];
 const PART_2: [Op; 3] = [Op::Plus, Op::Times, Op::Concat];
 
+// NOTE: Recursive solution is my translation of Mark Goadrich's Go solution:
+// https://github.com/mgoadric/AdventOfCode/blob/main/2024/Go/day7/day7.go
+
 fn main() -> anyhow::Result<()> {
     chooser_main(|filename, part, options| {
-        let goadrich = options.iter().any(|s| s.as_str() == "-goadrich");
+        let early = options.iter().any(|s| s.as_str() == "-early");
+        let recursive = early || options.iter().any(|s| s.as_str() == "-recursive");
         let ops = match part {
             Part::One => &PART_1[..],
             Part::Two => &PART_2[..],
@@ -13,8 +17,8 @@ fn main() -> anyhow::Result<()> {
         let mut total = 0;
         for line in all_lines(filename)? {
             let (target, nums) = parse(line);
-            if goadrich && solve_goadrich(ops, target, 0, &nums[..])
-                || !goadrich && solve_iterator(ops.iter().copied(), target, &nums).is_some()
+            if recursive && solve_recursive(early, ops, target, 0, &nums[..])
+                || !recursive && solve_iterator(ops.iter().copied(), target, &nums).is_some()
             {
                 total += target;
             }
@@ -36,15 +40,15 @@ fn parse(line: String) -> (i64, Vec<i64>) {
     (target, nums)
 }
 
-fn solve_goadrich(options: &[Op], target: i64, current: i64, nums: &[i64]) -> bool {
-    if current > target {
+fn solve_recursive(early: bool, options: &[Op], target: i64, current: i64, nums: &[i64]) -> bool {
+    if early && current > target {
         false
     } else if nums.len() == 0 {
         target == current
     } else {
         options
             .iter()
-            .any(|op| solve_goadrich(options, target, op.op(current, nums[0]), &nums[1..]))
+            .any(|op| solve_recursive(early, options, target, op.op(current, nums[0]), &nums[1..]))
     }
 }
 
