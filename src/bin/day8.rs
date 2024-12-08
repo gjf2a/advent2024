@@ -1,9 +1,9 @@
 use std::collections::{HashMap, HashSet};
 
-use advent2024::{chooser_main, grid::GridCharWorld, multidim::Position, Part};
+use advent2024::{advent_main, grid::GridCharWorld, multidim::Position, Part};
 
 fn main() -> anyhow::Result<()> {
-    chooser_main(|filename, part, _| {
+    advent_main(|filename, part, _| {
         let map = Antennae::new(filename, part)?;
         println!("{}", map.antinodes.len());
         Ok(())

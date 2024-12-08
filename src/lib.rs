@@ -29,15 +29,20 @@ impl FromStr for Part {
     }
 }
 
-pub fn chooser_main(code: fn(&str, Part, &[String]) -> anyhow::Result<()>) -> anyhow::Result<()> {
+pub fn advent_main(code: fn(&str, Part, Vec<&str>) -> anyhow::Result<()>) -> anyhow::Result<()> {
     let start = Instant::now();
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
         println!("Usage: {} filename [one|two] [options]", args[0]);
     } else if args.len() == 2 {
-        code(args[1].as_str(), Part::One, &[])?;
+        code(args[1].as_str(), Part::One, vec![])?;
     } else {
-        code(args[1].as_str(), args[2].parse().unwrap(), &args[3..])?;
+        let options = args
+            .iter()
+            .skip(3)
+            .map(|arg| arg.as_str())
+            .collect::<Vec<_>>();
+        code(args[1].as_str(), args[2].parse().unwrap(), options)?;
     }
     let duration = Instant::now().duration_since(start);
     println!("duration: {} ms", duration.as_millis());

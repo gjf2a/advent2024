@@ -1,14 +1,14 @@
 use std::collections::HashSet;
 
 use advent2024::{
-    chooser_main,
+    advent_main,
     grid::GridCharWorld,
     multidim::{DirType, ManhattanDir, Position},
     Part,
 };
 
 fn main() -> anyhow::Result<()> {
-    chooser_main(|filename, part, _| {
+    advent_main(|filename, part, _| {
         let patrol_map = GridCharWorld::from_char_file(filename)?;
         let result = match part {
             Part::One => part1(&patrol_map),

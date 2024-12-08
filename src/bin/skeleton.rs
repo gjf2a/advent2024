@@ -1,7 +1,7 @@
-use advent2024::chooser_main;
+use advent2024::advent_main;
 
 fn main() -> anyhow::Result<()> {
-    chooser_main(|filename, part, _| {
+    advent_main(|filename, part, _| {
         println!("{filename} {part:?}");
         Ok(())
     })

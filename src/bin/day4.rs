@@ -1,5 +1,5 @@
 use advent2024::{
-    chooser_main,
+    advent_main,
     grid::GridCharWorld,
     multidim::{Dir, DirType},
     Part,
@@ -7,7 +7,7 @@ use advent2024::{
 use enum_iterator::all;
 
 fn main() -> anyhow::Result<()> {
-    chooser_main(|filename, part, _| {
+    advent_main(|filename, part, _| {
         let world = GridCharWorld::from_char_file(filename)?;
         let count = match part {
             Part::One => part1(world),

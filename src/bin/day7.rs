@@ -1,4 +1,4 @@
-use advent2024::{all_lines, chooser_main, combinations::ComboIterator, Part};
+use advent2024::{all_lines, advent_main, combinations::ComboIterator, Part};
 
 const PART_1: [Op; 2] = [Op::Plus, Op::Times];
 const PART_2: [Op; 3] = [Op::Plus, Op::Times, Op::Concat];
@@ -7,9 +7,9 @@ const PART_2: [Op; 3] = [Op::Plus, Op::Times, Op::Concat];
 // https://github.com/mgoadric/AdventOfCode/blob/main/2024/Go/day7/day7.go
 
 fn main() -> anyhow::Result<()> {
-    chooser_main(|filename, part, options| {
-        let early = options.iter().any(|s| s.as_str() == "-early");
-        let recursive = early || options.iter().any(|s| s.as_str() == "-recursive");
+    advent_main(|filename, part, options| {
+        let early = options.contains(&"-early");
+        let recursive = early || options.contains(&"-recursive");
         let ops = match part {
             Part::One => &PART_1[..],
             Part::Two => &PART_2[..],

@@ -1,7 +1,7 @@
-use advent2024::{all_lines, chooser_main, Part};
+use advent2024::{all_lines, advent_main, Part};
 
 fn main() -> anyhow::Result<()> {
-    chooser_main(|filename, part, _| {
+    advent_main(|filename, part, _| {
         match part {
             Part::One => {
                 let (mut col1, mut col2) = get_lists(filename)?;

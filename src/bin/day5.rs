@@ -1,9 +1,9 @@
 use std::{cmp::Ordering, collections::BTreeSet};
 
-use advent2024::{all_lines, chooser_main, Part};
+use advent2024::{all_lines, advent_main, Part};
 
 fn main() -> anyhow::Result<()> {
-    chooser_main(|filename, part, _| {
+    advent_main(|filename, part, _| {
         let mut lines = all_lines(filename)?;
         let pairs = collect_rules_from(&mut lines);
         println!("{}", add_up_medians(part, &pairs, lines));
