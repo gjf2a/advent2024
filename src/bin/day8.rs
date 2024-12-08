@@ -27,8 +27,8 @@ fn find_antinodes(
                         add_antinode(&mut antinodes, locations[j] - diff, &world);
                     }
                     Part::Two => {
-                        add_antinode_streak(&mut antinodes, locations[i], &world, diff);
-                        add_antinode_streak(&mut antinodes, locations[j], &world, -diff);
+                        add_antinode_streak(&mut antinodes, locations[i], diff, &world);
+                        add_antinode_streak(&mut antinodes, locations[j], -diff, &world);
                     }
                 }
             }
@@ -46,8 +46,8 @@ fn add_antinode(antinodes: &mut HashSet<Position>, candidate: Position, world: &
 fn add_antinode_streak(
     antinodes: &mut HashSet<Position>,
     mut candidate: Position,
-    world: &GridCharWorld,
     diff: Position,
+    world: &GridCharWorld,
 ) {
     while world.in_bounds(candidate) {
         antinodes.insert(candidate);
