@@ -87,9 +87,9 @@ impl FileBlocks {
 
     fn compressed_contiguous(&self) -> Self {
         let mut cmp = self.clone();
-        for down in (0..self.blocks.len()).rev() {
+        for down in (1..self.blocks.len()).rev() {
             let down = self.first_location_of(down);
-            for up in 0..down {
+            for up in 0..(down - 1) {
                 if cmp.blocks[up].free_space >= cmp.blocks[down].num_blocks {
                     cmp.blocks[down - 1].free_space += cmp.blocks[down].footprint();
                     let mut movee = cmp.blocks.remove(down).unwrap();
