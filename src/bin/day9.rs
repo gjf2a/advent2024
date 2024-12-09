@@ -1,15 +1,18 @@
-use std::{cmp::min, collections::VecDeque};
+use std::{cmp::min, collections::VecDeque, fmt::Display};
 
 use advent2024::{advent_main, all_lines, Part};
 
 fn main() -> anyhow::Result<()> {
-    advent_main(|filename, part, _| {
+    advent_main(|filename, part, options| {
         let file_blocks = FileBlocks::new(all_lines(filename)?.next().unwrap());
         let cmp = match part {
             Part::One => file_blocks.compressed_fragmented(),
             Part::Two => file_blocks.compressed_contiguous(),
         };
         assert_eq!(file_blocks.total_blocks_stored(), cmp.total_blocks_stored());
+        if options.contains(&"-show") {
+            println!("{cmp}");
+        }
         println!("{}", cmp.checksum());
         Ok(())
     })
@@ -80,6 +83,9 @@ impl FileBlocks {
         cmp
     }
 
+    //         00...111...2...333.44.5555.6666.777.888899
+    // Part 2: 00992111777.44.333....5555.6666.....8888..
+    // Actual: 00992111777333.44.5555.6666.8888
     fn compressed_contiguous(&self) -> Self {
         let mut src = self.clone();
         let mut cmp = Self::default();
@@ -131,5 +137,19 @@ impl BlockEntry {
         let free = self.free_space;
         self.free_space = 0;
         free
+    }
+}
+
+impl Display for FileBlocks {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for block in self.blocks.iter() {
+            for _ in 0..block.num_blocks {
+                write!(f, "{}", block.id_num)?;
+            }
+            for _ in 0..block.free_space {
+                write!(f, ".")?;
+            }
+        }
+        Ok(())
     }
 }
