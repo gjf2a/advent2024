@@ -89,8 +89,9 @@ impl FileBlocks {
         let mut cmp = self.clone();
         for down in (1..self.blocks.len()).rev() {
             let down = self.first_location_of(down);
-            for up in 0..(down - 1) {
+            for up in 0..down {
                 if cmp.blocks[up].free_space >= cmp.blocks[down].num_blocks {
+                    assert_ne!(up, down - 1);
                     cmp.blocks[down - 1].free_space += cmp.blocks[down].footprint();
                     let mut movee = cmp.blocks.remove(down).unwrap();
                     movee.free_space = cmp.blocks[up].free_space - movee.num_blocks;
