@@ -37,27 +37,16 @@ impl FileBlocks {
     fn new(input_line: String) -> Self {
         let mut blocks = VecDeque::new();
         let mut char_seq = input_line.chars().map(|c| c.to_digit(10).unwrap() as usize);
-        loop {
-            let num_blocks = char_seq.next().unwrap();
+        while let Some(num_blocks) = char_seq.next() {
             let id_num = blocks.len();
-            match char_seq.next() {
-                None => {
-                    blocks.push_back(BlockEntry {
-                        id_num,
-                        num_blocks,
-                        free_space: 0,
-                    });
-                    return Self { blocks };
-                }
-                Some(free_space) => {
-                    blocks.push_back(BlockEntry {
-                        id_num,
-                        num_blocks,
-                        free_space,
-                    });
-                }
-            }
+            let free_space = char_seq.next().map_or(0, |c| c);
+            blocks.push_back(BlockEntry {
+                id_num,
+                num_blocks,
+                free_space,
+            });
         }
+        Self { blocks }
     }
 
     fn compressed_fragmented(&self) -> Self {
