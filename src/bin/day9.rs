@@ -77,22 +77,31 @@ impl FileBlocks {
 
     fn compressed_contiguous(&self) -> Self {
         let mut cmp = self.clone();
-        for down in (1..self.blocks.len()).rev() {
-            let down = self.first_location_of(down);
-            for up in 0..down {
-                if cmp.blocks[up].free_space >= cmp.blocks[down].num_blocks {
-                    assert_ne!(up, down - 1);
-                    cmp.blocks[down - 1].free_space += cmp.blocks[down].footprint();
-                    let mut movee = cmp.blocks.remove(down).unwrap();
-                    movee.free_space = cmp.blocks[up].free_space - movee.num_blocks;
-                    cmp.blocks[up].free_space = 0;
-                    cmp.blocks.insert(up + 1, movee);
-                    break;
-                }
+        for candidate_id in (1..self.blocks.len()).rev() {
+            let right = cmp.first_location_of(candidate_id);
+            if let Some(left) = cmp.find_free_space_for(right) {
+                cmp.swap_block_left(left, right);
             }
         }
         assert_eq!(self.total_footprint(), cmp.total_footprint());
         cmp
+    }
+
+    fn find_free_space_for(&self, right: usize) -> Option<usize> {
+        (0..right).find(|left| self.blocks[*left].free_space >= self.blocks[right].num_blocks)
+    }
+
+    fn swap_block_left(&mut self, left: usize, right: usize) {
+        if left == right - 1 {
+            self.blocks[left].free_space -= self.blocks[right].num_blocks;
+            self.blocks[right].free_space += self.blocks[right].num_blocks;
+        } else {
+            self.blocks[right - 1].free_space += self.blocks[right].footprint();
+            let mut movee: BlockEntry = self.blocks.remove(right).unwrap();
+            movee.free_space = self.blocks[left].free_space - movee.num_blocks;
+            self.blocks[left].free_space = 0;
+            self.blocks.insert(left + 1, movee);
+        }
     }
 
     fn append_block_entry(&mut self, entry: BlockEntry) {
