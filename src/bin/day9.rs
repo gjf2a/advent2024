@@ -1,11 +1,15 @@
 use std::{cmp::min, collections::VecDeque};
 
-use advent2024::{advent_main, all_lines};
+use advent2024::{advent_main, all_lines, Part};
 
 fn main() -> anyhow::Result<()> {
     advent_main(|filename, part, _| {
         let file_blocks = FileBlocks::new(all_lines(filename)?.next().unwrap());
-        let cmp = file_blocks.compressed();
+        let cmp = match part {
+            Part::One => file_blocks.compressed_fragmented(),
+            Part::Two => file_blocks.compressed_contiguous(),
+        };
+        assert_eq!(file_blocks.total_blocks_stored(), cmp.total_blocks_stored());
         println!("{}", cmp.checksum());
         Ok(())
     })
@@ -13,7 +17,7 @@ fn main() -> anyhow::Result<()> {
 
 #[derive(Clone, Default, Debug)]
 struct FileBlocks {
-    blocks: VecDeque<BlockEntry>
+    blocks: VecDeque<BlockEntry>,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -32,17 +36,25 @@ impl FileBlocks {
             let id_num = blocks.len();
             match char_seq.next() {
                 None => {
-                    blocks.push_back(BlockEntry {id_num, num_blocks, free_space: 0});
-                    return Self {blocks};
+                    blocks.push_back(BlockEntry {
+                        id_num,
+                        num_blocks,
+                        free_space: 0,
+                    });
+                    return Self { blocks };
                 }
                 Some(free_space) => {
-                    blocks.push_back(BlockEntry {id_num, num_blocks, free_space});
+                    blocks.push_back(BlockEntry {
+                        id_num,
+                        num_blocks,
+                        free_space,
+                    });
                 }
             }
         }
     }
 
-    fn compressed(&self) -> Self {
+    fn compressed_fragmented(&self) -> Self {
         let mut src = self.clone();
         let mut cmp = Self::default();
         while let Some(mut front_block) = src.blocks.pop_front() {
@@ -54,14 +66,36 @@ impl FileBlocks {
                 if move_count > 0 {
                     extra -= move_count;
                     end.num_blocks -= move_count;
-                    cmp.blocks.push_back(BlockEntry { id_num: end.id_num, num_blocks: move_count, free_space: 0 });
+                    cmp.blocks.push_back(BlockEntry {
+                        id_num: end.id_num,
+                        num_blocks: move_count,
+                        free_space: 0,
+                    });
                 }
                 if end.num_blocks == 0 {
                     src.blocks.pop_back();
                 }
             }
         }
-        assert_eq!(self.total_blocks_stored(), cmp.total_blocks_stored());
+        cmp
+    }
+
+    fn compressed_contiguous(&self) -> Self {
+        let mut src = self.clone();
+        let mut cmp = Self::default();
+        while let Some(mut front_block) = src.blocks.pop_front() {
+            let mut extra = front_block.clear_free();
+            cmp.append_block_entry(front_block);
+            for b in (0..src.blocks.len()).rev() {
+                if src.blocks[b].num_blocks <= extra {
+                    extra -= src.blocks[b].num_blocks;
+                    let mut movee = src.blocks.remove(b).unwrap();
+                    movee.free_space = 0;
+                    cmp.blocks.push_back(movee);
+                }
+            }
+            cmp.blocks.back_mut().unwrap().free_space = extra;
+        }
         cmp
     }
 
