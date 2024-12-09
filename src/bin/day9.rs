@@ -2,6 +2,8 @@ use std::{cmp::min, collections::VecDeque, fmt::Display};
 
 use advent2024::{advent_main, all_lines, Part};
 
+// 9963020502985 is too high on Part 2.
+
 fn main() -> anyhow::Result<()> {
     advent_main(|filename, part, options| {
         let file_blocks = FileBlocks::new(all_lines(filename)?.next().unwrap());
@@ -83,14 +85,6 @@ impl FileBlocks {
         cmp
     }
 
-    //         00...111...2...333.44.5555.6666.777.8888..
-    //         0099.111...2...333.44.5555.6666.777.8888..
-    //         00992111.......333.44.5555.6666.777.8888..
-    //         00992111777....333.44.5555.6666.....8888..
-    //         00992111777.44.333....5555.6666.....8888..
-    // Part 2: 00992111777.44.333....5555.6666.....8888..
-    // Actual: 00992111777333.44.5555.6666.8888
-    // New:    009921118888333.44.5555.6666.777.....
     fn compressed_contiguous(&self) -> Self {
         let mut cmp = self.clone();
         for down in (0..self.blocks.len()).rev() {
