@@ -139,7 +139,7 @@ impl FileBlocks {
             for j in i..(i + block.num_blocks) {
                 total += j * block.id_num;
             }
-            i += block.num_blocks + block.free_space;
+            i += block.footprint();
         }
         total
     }
