@@ -2,12 +2,9 @@ use std::{cmp::min, collections::VecDeque, fmt::Display};
 
 use advent2024::{advent_main, all_lines, Part};
 
-// 9963020502985 is too high on Part 2.
-
 fn main() -> anyhow::Result<()> {
     advent_main(|filename, part, options| {
         let file_blocks = FileBlocks::new(all_lines(filename)?.next().unwrap());
-        println!("# entries: {}", file_blocks.blocks.len());
         let cmp = match part {
             Part::One => file_blocks.compressed_fragmented(),
             Part::Two => file_blocks.compressed_contiguous(),
@@ -49,30 +46,64 @@ impl FileBlocks {
         Self { blocks }
     }
 
+    fn checksum(&self) -> usize {
+        let mut total = 0;
+        let mut i = 0;
+        for block in self.blocks.iter() {
+            total += (i..(i + block.num_blocks))
+                .map(|j| j * block.id_num)
+                .sum::<usize>();
+            i += block.footprint();
+        }
+        total
+    }
+
+    fn total_blocks_stored(&self) -> usize {
+        self.blocks.iter().map(|b| b.num_blocks).sum()
+    }
+
+    fn total_footprint(&self) -> usize {
+        self.blocks.iter().map(|b| b.footprint()).sum()
+    }
+
     fn compressed_fragmented(&self) -> Self {
         let mut src = self.clone();
         let mut cmp = Self::default();
         while let Some(mut front_block) = src.blocks.pop_front() {
-            let mut extra = front_block.clear_free();
+            let extra = front_block.clear_free();
             cmp.append_block_entry(front_block);
-            while extra > 0 && src.blocks.len() > 0 {
-                let end = src.blocks.back_mut().unwrap();
-                let move_count = min(extra, end.num_blocks);
-                if move_count > 0 {
-                    extra -= move_count;
-                    end.num_blocks -= move_count;
-                    cmp.blocks.push_back(BlockEntry {
-                        id_num: end.id_num,
-                        num_blocks: move_count,
-                        free_space: 0,
-                    });
-                }
-                if end.num_blocks == 0 {
-                    src.blocks.pop_back();
-                }
-            }
+            src.distribute(extra, &mut cmp);
         }
         cmp
+    }
+
+    fn append_block_entry(&mut self, entry: BlockEntry) {
+        if let Some(end) = self.blocks.back_mut() {
+            if end.id_num == entry.id_num {
+                end.num_blocks += entry.num_blocks;
+                return;
+            }
+        }
+        self.blocks.push_back(entry);
+    }
+
+    fn distribute(&mut self, mut extra: usize, cmp: &mut Self) {
+        while extra > 0 && self.blocks.len() > 0 {
+            let end = self.blocks.back_mut().unwrap();
+            let move_count = min(extra, end.num_blocks);
+            if move_count > 0 {
+                extra -= move_count;
+                end.num_blocks -= move_count;
+                cmp.blocks.push_back(BlockEntry {
+                    id_num: end.id_num,
+                    num_blocks: move_count,
+                    free_space: 0,
+                });
+            }
+            if end.num_blocks == 0 {
+                self.blocks.pop_back();
+            }
+        }
     }
 
     fn compressed_contiguous(&self) -> Self {
@@ -104,24 +135,6 @@ impl FileBlocks {
         }
     }
 
-    fn append_block_entry(&mut self, entry: BlockEntry) {
-        if let Some(end) = self.blocks.back_mut() {
-            if end.id_num == entry.id_num {
-                end.num_blocks += entry.num_blocks;
-                return;
-            }
-        }
-        self.blocks.push_back(entry);
-    }
-
-    fn total_blocks_stored(&self) -> usize {
-        self.blocks.iter().map(|b| b.num_blocks).sum()
-    }
-
-    fn total_footprint(&self) -> usize {
-        self.blocks.iter().map(|b| b.footprint()).sum()
-    }
-
     fn first_location_of(&self, id_num: usize) -> usize {
         self.blocks
             .iter()
@@ -129,18 +142,6 @@ impl FileBlocks {
             .find(|(_, b)| b.id_num == id_num)
             .map(|(i, _)| i)
             .unwrap()
-    }
-
-    fn checksum(&self) -> usize {
-        let mut total = 0;
-        let mut i = 0;
-        for block in self.blocks.iter() {
-            for j in i..(i + block.num_blocks) {
-                total += j * block.id_num;
-            }
-            i += block.footprint();
-        }
-        total
     }
 }
 
