@@ -83,24 +83,28 @@ impl FileBlocks {
         cmp
     }
 
-    //         00...111...2...333.44.5555.6666.777.888899
+    //         00...111...2...333.44.5555.6666.777.8888..
+    //         0099.111...2...333.44.5555.6666.777.8888..
+    //         00992111.......333.44.5555.6666.777.8888..
+    //         00992111777....333.44.5555.6666.....8888..
+    //         00992111777.44.333....5555.6666.....8888..
     // Part 2: 00992111777.44.333....5555.6666.....8888..
     // Actual: 00992111777333.44.5555.6666.8888
+    // New:    009921118888333.44.5555.6666.777.....
     fn compressed_contiguous(&self) -> Self {
-        let mut src = self.clone();
-        let mut cmp = Self::default();
-        while let Some(mut front_block) = src.blocks.pop_front() {
-            let mut extra = front_block.clear_free();
-            cmp.append_block_entry(front_block);
-            for b in (0..src.blocks.len()).rev() {
-                if src.blocks[b].num_blocks <= extra {
-                    extra -= src.blocks[b].num_blocks;
-                    let mut movee = src.blocks.remove(b).unwrap();
-                    movee.free_space = 0;
-                    cmp.blocks.push_back(movee);
+        let mut cmp = self.clone();
+        for down in (0..self.blocks.len()).rev() {
+            let down = self.first_location_of(down);
+            for up in 0..down {
+                if cmp.blocks[up].free_space >= cmp.blocks[down].num_blocks {
+                    cmp.blocks[down - 1].free_space += cmp.blocks[down].footprint();
+                    let mut movee = cmp.blocks.remove(down).unwrap();
+                    movee.free_space = cmp.blocks[up].free_space - movee.num_blocks;
+                    cmp.blocks[up].free_space = 0;
+                    cmp.blocks.insert(up + 1, movee);
+                    break;
                 }
             }
-            cmp.blocks.back_mut().unwrap().free_space = extra;
         }
         cmp
     }
@@ -117,6 +121,15 @@ impl FileBlocks {
 
     fn total_blocks_stored(&self) -> usize {
         self.blocks.iter().map(|b| b.num_blocks).sum()
+    }
+
+    fn first_location_of(&self, id_num: usize) -> usize {
+        self.blocks
+            .iter()
+            .enumerate()
+            .find(|(_, b)| b.id_num == id_num)
+            .map(|(i, _)| i)
+            .unwrap()
     }
 
     fn checksum(&self) -> usize {
@@ -137,6 +150,10 @@ impl BlockEntry {
         let free = self.free_space;
         self.free_space = 0;
         free
+    }
+
+    fn footprint(&self) -> usize {
+        self.num_blocks + self.free_space
     }
 }
 
