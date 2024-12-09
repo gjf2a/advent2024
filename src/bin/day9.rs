@@ -7,6 +7,7 @@ use advent2024::{advent_main, all_lines, Part};
 fn main() -> anyhow::Result<()> {
     advent_main(|filename, part, options| {
         let file_blocks = FileBlocks::new(all_lines(filename)?.next().unwrap());
+        println!("# entries: {}", file_blocks.blocks.len());
         let cmp = match part {
             Part::One => file_blocks.compressed_fragmented(),
             Part::Two => file_blocks.compressed_contiguous(),
