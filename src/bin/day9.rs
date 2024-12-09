@@ -100,6 +100,7 @@ impl FileBlocks {
                 }
             }
         }
+        assert_eq!(self.total_footprint(), cmp.total_footprint());
         cmp
     }
 
@@ -115,6 +116,10 @@ impl FileBlocks {
 
     fn total_blocks_stored(&self) -> usize {
         self.blocks.iter().map(|b| b.num_blocks).sum()
+    }
+
+    fn total_footprint(&self) -> usize {
+        self.blocks.iter().map(|b| b.footprint()).sum()
     }
 
     fn first_location_of(&self, id_num: usize) -> usize {
