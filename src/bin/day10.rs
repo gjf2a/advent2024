@@ -27,7 +27,7 @@ fn dynamic_versions(part: Part, topomap: &GridDigitWorld) {
     let result = match part {
         Part::One => {
             let mut total = 0;
-            for (start, _) in topomap.position_value_iter().filter(|(_, v)| **v == 0) {
+            for (start, _) in topomap.position_value_iter().filter(|(_, h)| **h == 0) {
                 total += pure_dynamic(|s, _| s == start, topomap)
                     .iter()
                     .filter(|(_, c)| *c > 0)
