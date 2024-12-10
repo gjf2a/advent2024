@@ -12,16 +12,25 @@ use enum_iterator::all;
 use hash_histogram::HashHistogram;
 
 fn main() -> anyhow::Result<()> {
-    advent_main(|filename, part, _| {
+    advent_main(|filename, part, options| {
         let topomap = GridDigitWorld::from_digit_file(filename)?;
-        let mut total = 0;
-        for (start, _) in topomap.position_value_iter().filter(|(_, v)| **v == 0) {
-            total += match part {
-                Part::One => num_reachable_peaks(start, &topomap),
-                Part::Two => num_distinct_paths(start, &topomap),
+        if options.contains(&"-dynamic") {
+            let nines = pure_dynamic(&topomap);
+            let result = match part {
+                Part::One => nines.len(),
+                Part::Two => nines.iter().map(|(_,c)| c).sum::<usize>()
+            };
+            println!("{result}");
+        } else {
+            let mut total = 0;
+            for (start, _) in topomap.position_value_iter().filter(|(_, v)| **v == 0) {
+                total += match part {
+                    Part::One => num_reachable_peaks(start, &topomap),
+                    Part::Two => num_distinct_paths(start, &topomap),
+                }
             }
+            println!("{total}");
         }
-        println!("{total}");
         Ok(())
     })
 }
@@ -97,4 +106,32 @@ fn num_paths_to(
         }
     }
     paths_to
+}
+
+fn pure_dynamic(topomap: &GridDigitWorld) -> Vec<(Position, usize)> {
+    let mut height2locations = BTreeMap::new();
+    let mut paths_to = HashHistogram::new();
+    for (p, h) in topomap.position_value_iter() {
+        let height = h.a();
+        if height == 0 {
+            paths_to.bump(p);
+        }
+        match height2locations.get_mut(&height) {
+            None => {
+                height2locations.insert(height, vec![*p]);
+            }
+            Some(v) => v.push(*p),
+        };
+    }
+
+    for (height, locations) in height2locations.iter().filter(|(h,_)| **h < 9) {
+        for p in locations.iter() {
+            for next in height2locations.get(&(height + 1)).unwrap() {
+                if p.manhattan_distance(next) == 1 {
+                    paths_to.bump_by(next, paths_to.count(p));
+                }
+            }
+        }
+    }
+    height2locations.get(&9).unwrap().iter().map(|p| (*p, paths_to.count(&p))).collect()
 }
