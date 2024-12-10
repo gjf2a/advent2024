@@ -27,13 +27,11 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn num_reachable_peaks(start: &Position, topomap: &GridDigitWorld) -> usize {
-    println!("{start}");
     let mut nine_count = 0;
     breadth_first_search(start, |p, q| {
         let height = topomap.value(*p).unwrap();
         if height == 9 {
             nine_count += 1;
-            println!("nine at: {p}");
         } else {
             for n in ascending_neighbors(*p, topomap) {
                 q.enqueue(&n);
@@ -41,12 +39,6 @@ fn num_reachable_peaks(start: &Position, topomap: &GridDigitWorld) -> usize {
         }
         ContinueSearch::Yes
     });
-    let height2locations = height2locations(start, topomap);
-    let paths_to = num_paths_to(start, &height2locations);
-    let nines = height2locations.get(&ModNumC::new(9)).unwrap();
-    let alt1 = nines.len();
-    let alt2 = nines.iter().filter(|p| paths_to.count(p) > 0).count();
-    println!("nine_count: {nine_count} alt1: {alt1}? {}, alt2: {alt2}? {}", nine_count == alt1, nine_count == alt2);
     nine_count
 }
 
@@ -67,7 +59,10 @@ fn num_distinct_paths(start: &Position, topomap: &GridDigitWorld) -> usize {
     nines.iter().map(|p| paths_to.count(p)).sum()
 }
 
-fn height2locations(start: &Position, topomap: &GridDigitWorld) -> BTreeMap<ModNumC<u8, 10>, Vec<Position>> {
+fn height2locations(
+    start: &Position,
+    topomap: &GridDigitWorld,
+) -> BTreeMap<ModNumC<u8, 10>, Vec<Position>> {
     let mut height2locations = BTreeMap::new();
     breadth_first_search(start, |p, q| {
         let height = topomap.value(*p).unwrap();
@@ -85,7 +80,10 @@ fn height2locations(start: &Position, topomap: &GridDigitWorld) -> BTreeMap<ModN
     height2locations
 }
 
-fn num_paths_to(start: &Position, height2locations: &BTreeMap<ModNumC<u8, 10>, Vec<Position>>) -> HashHistogram<Position> {
+fn num_paths_to(
+    start: &Position,
+    height2locations: &BTreeMap<ModNumC<u8, 10>, Vec<Position>>,
+) -> HashHistogram<Position> {
     let mut paths_to = HashHistogram::new();
     paths_to.bump(start);
     for height in 0..=8 {
