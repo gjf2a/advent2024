@@ -1,4 +1,4 @@
-use std::collections::VecDeque;
+use std::collections::BTreeMap;
 
 use advent2024::{
     advent_main,
@@ -7,7 +7,7 @@ use advent2024::{
     searchers::{breadth_first_search, ContinueSearch, SearchQueue},
     Part,
 };
-use bare_metal_modulo::MNum;
+use bare_metal_modulo::{MNum, ModNumC};
 use enum_iterator::all;
 use hash_histogram::HashHistogram;
 
@@ -53,20 +53,37 @@ fn ascending_neighbors(
 }
 
 fn num_distinct_paths(start: &Position, topomap: &GridDigitWorld) -> usize {
+    let mut height2locations = BTreeMap::new();
+    breadth_first_search(start, |p, q| {
+        let height = topomap.value(*p).unwrap();
+        //println!("height: {height}");
+        match height2locations.get_mut(&height) {
+            None => {height2locations.insert(height, vec![*p]);}
+            Some(v) => v.push(*p)
+        };
+        for n in ascending_neighbors(*p, topomap) {
+            q.enqueue(&n);
+        }
+        ContinueSearch::Yes
+    });
+
+    println!("{start}");
+    println!("{height2locations:?}");
     let mut num_incoming = HashHistogram::new();
-    let mut queue = VecDeque::new();
-    queue.push_back((*start, 0));
-    while let Some((p, incoming_count)) = queue.pop_front() {
-        let seen_before = num_incoming.count(&p) > 0;
-        num_incoming.bump_by(&p, incoming_count);
-        if !seen_before {
-            for n in ascending_neighbors(p, topomap) {
-                queue.push_back((n, num_incoming.count(&n)));
+    num_incoming.bump(start);
+    for height in 0..=8 {
+        let height = ModNumC::new(height);
+        for p in height2locations.get(&height).unwrap() {
+            for next in height2locations.get(&(height + 1)).unwrap() {
+                if p.manhattan_distance(next) == 1 {
+                    num_incoming.bump_by(next, num_incoming.count(p));
+                }
             }
-        } 
+        }
     }
-    println!("start: {start}");
     println!("{num_incoming}");
-    println!();
-    num_incoming.iter().filter(|(p, _)| topomap.value(**p).unwrap() == 9).map(|(_, c)| *c).sum()
+    for p in height2locations.get(&ModNumC::new(9)).unwrap() {
+        println!("{p:?}: {}", num_incoming.count(p));
+    }
+    height2locations.get(&ModNumC::new(9)).unwrap().iter().map(|p| num_incoming.count(p)).sum()
 }
