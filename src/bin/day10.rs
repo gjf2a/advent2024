@@ -15,24 +15,84 @@ fn main() -> anyhow::Result<()> {
     advent_main(|filename, part, options| {
         let topomap = GridDigitWorld::from_digit_file(filename)?;
         if options.contains(&"-dynamic") {
-            let nines = pure_dynamic(&topomap);
-            let result = match part {
-                Part::One => nines.len(),
-                Part::Two => nines.iter().map(|(_,c)| c).sum::<usize>()
-            };
-            println!("{result}");
+            dynamic_versions(part, &topomap);
         } else {
-            let mut total = 0;
-            for (start, _) in topomap.position_value_iter().filter(|(_, v)| **v == 0) {
-                total += match part {
-                    Part::One => num_reachable_peaks(start, &topomap),
-                    Part::Two => num_distinct_paths(start, &topomap),
-                }
-            }
-            println!("{total}");
+            original_versions(part, &topomap);
         }
         Ok(())
     })
+}
+
+fn dynamic_versions(part: Part, topomap: &GridDigitWorld) {
+    let result = match part {
+        Part::One => {
+            let mut total = 0;
+            for (start, _) in topomap.position_value_iter().filter(|(_, v)| **v == 0) {
+                total += pure_dynamic(|s, _| s == start, topomap)
+                    .iter()
+                    .filter(|(_, c)| *c > 0)
+                    .count();
+            }
+            total
+        }
+        Part::Two => pure_dynamic(|_, h| h == 0, topomap)
+            .iter()
+            .map(|(_, c)| c)
+            .sum::<usize>(),
+    };
+    println!("{result}");
+}
+
+fn pure_dynamic<S: Fn(&Position, u8) -> bool>(
+    start_predicate: S,
+    topomap: &GridDigitWorld,
+) -> Vec<(Position, usize)> {
+    let (height2locations, mut paths_to) = dynamic_tables(start_predicate, topomap);
+
+    for (height, locations) in height2locations.iter().filter(|(h, _)| **h < 9) {
+        for p in locations.iter() {
+            for next in height2locations.get(&(height + 1)).unwrap() {
+                if p.manhattan_distance(next) == 1 {
+                    paths_to.bump_by(next, paths_to.count(p));
+                }
+            }
+        }
+    }
+
+    let nines = height2locations.get(&9).unwrap();
+    nines.iter().map(|p| (*p, paths_to.count(&p))).collect()
+}
+
+fn dynamic_tables<S: Fn(&Position, u8) -> bool>(
+    start_predicate: S,
+    topomap: &GridDigitWorld,
+) -> (BTreeMap<u8, Vec<Position>>, HashHistogram<Position>) {
+    let mut height2locations = BTreeMap::new();
+    let mut paths_to = HashHistogram::new();
+    for (p, h) in topomap.position_value_iter() {
+        let height = h.a();
+        if start_predicate(p, height) {
+            paths_to.bump(p);
+        }
+        match height2locations.get_mut(&height) {
+            None => {
+                height2locations.insert(height, vec![*p]);
+            }
+            Some(v) => v.push(*p),
+        };
+    }
+    (height2locations, paths_to)
+}
+
+fn original_versions(part: Part, topomap: &GridDigitWorld) {
+    let mut total = 0;
+    for (start, _) in topomap.position_value_iter().filter(|(_, v)| **v == 0) {
+        total += match part {
+            Part::One => num_reachable_peaks(start, topomap),
+            Part::Two => num_distinct_paths(start, topomap),
+        }
+    }
+    println!("{total}");
 }
 
 fn num_reachable_peaks(start: &Position, topomap: &GridDigitWorld) -> usize {
@@ -106,32 +166,4 @@ fn num_paths_to(
         }
     }
     paths_to
-}
-
-fn pure_dynamic(topomap: &GridDigitWorld) -> Vec<(Position, usize)> {
-    let mut height2locations = BTreeMap::new();
-    let mut paths_to = HashHistogram::new();
-    for (p, h) in topomap.position_value_iter() {
-        let height = h.a();
-        if height == 0 {
-            paths_to.bump(p);
-        }
-        match height2locations.get_mut(&height) {
-            None => {
-                height2locations.insert(height, vec![*p]);
-            }
-            Some(v) => v.push(*p),
-        };
-    }
-
-    for (height, locations) in height2locations.iter().filter(|(h,_)| **h < 9) {
-        for p in locations.iter() {
-            for next in height2locations.get(&(height + 1)).unwrap() {
-                if p.manhattan_distance(next) == 1 {
-                    paths_to.bump_by(next, paths_to.count(p));
-                }
-            }
-        }
-    }
-    height2locations.get(&9).unwrap().iter().map(|p| (*p, paths_to.count(&p))).collect()
 }
