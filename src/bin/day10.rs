@@ -53,10 +53,20 @@ fn ascending_neighbors(
 }
 
 fn num_distinct_paths(start: &Position, topomap: &GridDigitWorld) -> usize {
-    //let mut num_incoming = HashHistogram::new();
+    let mut num_incoming = HashHistogram::new();
     let mut queue = VecDeque::new();
     queue.push_back((*start, 0));
-    while !queue.is_empty() {}
-    todo!()
-    //num_incoming.iter().filter(|(p, _)| topomap.value(p).unwrap() == 9).map(|(_, c)| *c).sum()
+    while let Some((p, incoming_count)) = queue.pop_front() {
+        let seen_before = num_incoming.count(&p) > 0;
+        num_incoming.bump_by(&p, incoming_count);
+        if !seen_before {
+            for n in ascending_neighbors(p, topomap) {
+                queue.push_back((n, num_incoming.count(&n)));
+            }
+        } 
+    }
+    println!("start: {start}");
+    println!("{num_incoming}");
+    println!();
+    num_incoming.iter().filter(|(p, _)| topomap.value(**p).unwrap() == 9).map(|(_, c)| *c).sum()
 }
