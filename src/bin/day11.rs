@@ -1,4 +1,4 @@
-use std::{collections::HashSet, fmt::Display};
+use std::{collections::{HashMap, HashSet}, fmt::Display};
 
 use advent2024::{advent_main, all_lines, Part};
 
@@ -17,7 +17,9 @@ fn main() -> anyhow::Result<()> {
                     println!("{}", stones.len());
                 }
                 Part::Two => {
-                    todo!()
+                    let mut table = StoneTable::new(filename)?;
+
+                    println!("{}", table.count());
                 }
             }
         }
@@ -25,55 +27,24 @@ fn main() -> anyhow::Result<()> {
     })
 }
 
-fn visualize(mut stones: Stones, opt: &str) {
-    let n = opt.find(':').unwrap();
-    let n = opt[(n + 1)..].parse::<usize>().unwrap();
-    if opt.starts_with("-explore") {
-        for i in 0..n {
-            stones.blink();
-            println!("Step {}: {}", (i + 1), stones);
-        }
-    } else if opt.starts_with("-count") {
-        for i in 0..n {
-            stones.blink();
-            println!("Step {}: {}", (i + 1), stones.len());
-        }
-    } else if opt.starts_with("-valueset") {
-        let mut stones = Stones {
-            stones: vec![Stone { number: n as u128 }],
-        };
-        let mut seen = HashSet::new();
-        let mut i = 0;
-        loop {
-            stones.blink_unseen_only(&seen);
-            let unseen = stones.stones.iter().filter(|s| !seen.contains(*s)).count();
-            println!("Step {}: (unseen: {}) {}", (i + 1), unseen, stones.len());
-            if unseen == 0 {
-                break;
-            }
-            for stone in stones.stones.iter() {
-                seen.insert(*stone);
-            }
-            i += 1;
-        }
-    } else if opt.starts_with("-value") {
-        let mut stones = Stones {
-            stones: vec![Stone { number: n as u128 }],
-        };
-        for i in 0..10 {
-            stones.blink();
-            println!("Step {} ({}): {}", (i + 1), stones.len(), stones);
-        }
-    } else if opt.starts_with("-sets") {
-        let mut seen = HashSet::new();
-        for i in 0..n {
-            stones.blink_unseen_only(&seen);
-            let unseen = stones.stones.iter().filter(|s| !seen.contains(*s)).count();
-            println!("Step {}: (unseen: {}) {}", (i + 1), unseen, stones.len());
-            for stone in stones.stones.iter() {
-                seen.insert(*stone);
-            }
-        }
+struct StoneTable {
+    stoneblinks2count: HashMap<(Stone, usize), u128>
+}
+
+impl StoneTable {
+    fn new(filename: &str) -> anyhow::Result<Self> {
+        let line = all_lines(filename)?.next().unwrap();
+        Ok(Self {
+            stoneblinks2count: line.split_whitespace().map(|sn| ((Stone::new(sn.parse::<u128>().unwrap()), 0), 1)).collect()
+        })
+    }
+
+    fn count(&self) -> u128 {
+        self.stoneblinks2count.values().sum()
+    }
+
+    fn blink(&mut self) {
+        
     }
 }
 
@@ -83,11 +54,9 @@ struct Stones {
 
 impl Stones {
     fn new(filename: &str) -> anyhow::Result<Self> {
+        let line = all_lines(filename)?.next().unwrap();
         Ok(Self {
-            stones: all_lines(filename)?
-                .next()
-                .unwrap()
-                .split_whitespace()
+            stones: line.split_whitespace()
                 .map(|sn| Stone::new(sn.parse::<u128>().unwrap()))
                 .collect(),
         })
@@ -162,6 +131,58 @@ impl Stone {
                     .collect()
             } else {
                 vec![Self::new(self.number * 2024)]
+            }
+        }
+    }
+}
+
+fn visualize(mut stones: Stones, opt: &str) {
+    let n = opt.find(':').unwrap();
+    let n = opt[(n + 1)..].parse::<usize>().unwrap();
+    if opt.starts_with("-explore") {
+        for i in 0..n {
+            stones.blink();
+            println!("Step {}: {}", (i + 1), stones);
+        }
+    } else if opt.starts_with("-count") {
+        for i in 0..n {
+            stones.blink();
+            println!("Step {}: {}", (i + 1), stones.len());
+        }
+    } else if opt.starts_with("-valueset") {
+        let mut stones = Stones {
+            stones: vec![Stone { number: n as u128 }],
+        };
+        let mut seen = HashSet::new();
+        let mut i = 0;
+        loop {
+            stones.blink_unseen_only(&seen);
+            let unseen = stones.stones.iter().filter(|s| !seen.contains(*s)).count();
+            println!("Step {}: (unseen: {}) {}", (i + 1), unseen, stones.len());
+            if unseen == 0 {
+                break;
+            }
+            for stone in stones.stones.iter() {
+                seen.insert(*stone);
+            }
+            i += 1;
+        }
+    } else if opt.starts_with("-value") {
+        let mut stones = Stones {
+            stones: vec![Stone { number: n as u128 }],
+        };
+        for i in 0..10 {
+            stones.blink();
+            println!("Step {} ({}): {}", (i + 1), stones.len(), stones);
+        }
+    } else if opt.starts_with("-sets") {
+        let mut seen = HashSet::new();
+        for i in 0..n {
+            stones.blink_unseen_only(&seen);
+            let unseen = stones.stones.iter().filter(|s| !seen.contains(*s)).count();
+            println!("Step {}: (unseen: {}) {}", (i + 1), unseen, stones.len());
+            for stone in stones.stones.iter() {
+                seen.insert(*stone);
             }
         }
     }
