@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{collections::HashSet, fmt::Display};
 
 use advent2024::{advent_main, all_lines, Part};
 
@@ -26,19 +26,53 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn visualize(mut stones: Stones, opt: &str) {
+    let n = opt.find(':').unwrap();
+    let n = opt[(n + 1)..].parse::<usize>().unwrap();
     if opt.starts_with("-explore") {
-        let n = opt.find(':').unwrap();
-        let n = opt[(n + 1)..].parse::<usize>().unwrap();
         for i in 0..n {
             stones.blink();
             println!("Step {}: {}", (i + 1), stones);
         }
     } else if opt.starts_with("-count") {
-        let n = opt.find(':').unwrap();
-        let n = opt[(n + 1)..].parse::<usize>().unwrap();
         for i in 0..n {
             stones.blink();
             println!("Step {}: {}", (i + 1), stones.len());
+        }
+    } else if opt.starts_with("-valueset") {
+        let mut stones = Stones {
+            stones: vec![Stone { number: n as u128 }],
+        };
+        let mut seen = HashSet::new();
+        let mut i = 0;
+        loop {
+            stones.blink_unseen_only(&seen);
+            let unseen = stones.stones.iter().filter(|s| !seen.contains(*s)).count();
+            println!("Step {}: (unseen: {}) {}", (i + 1), unseen, stones.len());
+            if unseen == 0 {
+                break;
+            }
+            for stone in stones.stones.iter() {
+                seen.insert(*stone);
+            }
+            i += 1;
+        }
+    } else if opt.starts_with("-value") {
+        let mut stones = Stones {
+            stones: vec![Stone { number: n as u128 }],
+        };
+        for i in 0..10 {
+            stones.blink();
+            println!("Step {} ({}): {}", (i + 1), stones.len(), stones);
+        }
+    } else if opt.starts_with("-sets") {
+        let mut seen = HashSet::new();
+        for i in 0..n {
+            stones.blink_unseen_only(&seen);
+            let unseen = stones.stones.iter().filter(|s| !seen.contains(*s)).count();
+            println!("Step {}: (unseen: {}) {}", (i + 1), unseen, stones.len());
+            for stone in stones.stones.iter() {
+                seen.insert(*stone);
+            }
         }
     }
 }
@@ -54,9 +88,7 @@ impl Stones {
                 .next()
                 .unwrap()
                 .split_whitespace()
-                .map(|sn| Stone {
-                    number: sn.parse::<u128>().unwrap(),
-                })
+                .map(|sn| Stone::new(sn.parse::<u128>().unwrap()))
                 .collect(),
         })
     }
@@ -71,6 +103,18 @@ impl Stones {
         self.stones = blinked;
     }
 
+    fn blink_unseen_only(&mut self, seen: &HashSet<Stone>) {
+        let mut blinked = vec![];
+        for stone in self.stones.iter() {
+            for s in stone.blink() {
+                if !seen.contains(&s) {
+                    blinked.push(s);
+                }
+            }
+        }
+        self.stones = blinked;
+    }
+
     fn len(&self) -> usize {
         self.stones.len()
     }
@@ -79,38 +123,45 @@ impl Stones {
 impl Display for Stones {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for stone in self.stones.iter() {
-            write!(f, "{} ", stone.as_string())?;
+            write!(f, "{stone} ")?;
         }
         Ok(())
     }
 }
 
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 struct Stone {
     number: u128,
 }
 
+impl Display for Stone {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.number)
+    }
+}
+
 impl Stone {
+    fn new(number: u128) -> Self {
+        Self { number }
+    }
+
     fn as_string(&self) -> String {
-        format!("{}", self.number)
+        format!("{}", self)
     }
 
     fn blink(&self) -> Vec<Self> {
         if self.number == 0 {
-            vec![Self { number: 1 }]
+            vec![Self::new(1)]
         } else {
             let s = self.as_string();
             if s.len() % 2 == 0 {
                 let halfway = s.len() / 2;
                 vec![&s[..halfway], &s[halfway..]]
                     .iter()
-                    .map(|sub| Self {
-                        number: sub.parse::<u128>().unwrap(),
-                    })
+                    .map(|sub| Self::new(sub.parse::<u128>().unwrap()))
                     .collect()
             } else {
-                vec![Self {
-                    number: self.number * 2024,
-                }]
+                vec![Self::new(self.number * 2024)]
             }
         }
     }
