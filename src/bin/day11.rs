@@ -1,24 +1,23 @@
-use std::{fmt::Display, ops::Index};
+use std::fmt::Display;
 
-use advent2024::{advent_main, all_lines};
+use advent2024::{advent_main, all_lines, Part};
 
 fn main() -> anyhow::Result<()> {
     advent_main(|filename, part, options| {
-        let mut stones = Stones::new(filename)?;
         if options.len() > 0 {
-            if options[0].starts_with("-explore") {
-                let n = options[0].find(':').unwrap();
-                let n = options[0][(n + 1)..].parse::<usize>().unwrap();
-                for i in 0..n {
-                    stones.blink();
-                    println!("Step {}: {}", (i + 1), stones);
+            let stones = Stones::new(filename)?;
+            visualize(stones, options[0]);
+        } else {
+            match part {
+                Part::One => {
+                    let mut stones = Stones::new(filename)?;
+                    for _ in 0..25 {
+                        stones.blink();
+                    }
+                    println!("{}", stones.len());
                 }
-            } else if options[0].starts_with("-count") {
-                let n = options[0].find(':').unwrap();
-                let n = options[0][(n + 1)..].parse::<usize>().unwrap();
-                for i in 0..n {
-                    stones.blink();
-                    println!("Step {}: {}", (i + 1), stones.len());
+                Part::Two => {
+                    todo!()
                 }
             }
         }
@@ -26,13 +25,40 @@ fn main() -> anyhow::Result<()> {
     })
 }
 
+fn visualize(mut stones: Stones, opt: &str) {
+    if opt.starts_with("-explore") {
+        let n = opt.find(':').unwrap();
+        let n = opt[(n + 1)..].parse::<usize>().unwrap();
+        for i in 0..n {
+            stones.blink();
+            println!("Step {}: {}", (i + 1), stones);
+        }
+    } else if opt.starts_with("-count") {
+        let n = opt.find(':').unwrap();
+        let n = opt[(n + 1)..].parse::<usize>().unwrap();
+        for i in 0..n {
+            stones.blink();
+            println!("Step {}: {}", (i + 1), stones.len());
+        }
+    }
+}
+
 struct Stones {
-    stones: Vec<Stone>
+    stones: Vec<Stone>,
 }
 
 impl Stones {
     fn new(filename: &str) -> anyhow::Result<Self> {
-        Ok(Self {stones: all_lines(filename)?.next().unwrap().split_whitespace().map(|sn| Stone {number: sn.parse::<u128>().unwrap()}).collect()})
+        Ok(Self {
+            stones: all_lines(filename)?
+                .next()
+                .unwrap()
+                .split_whitespace()
+                .map(|sn| Stone {
+                    number: sn.parse::<u128>().unwrap(),
+                })
+                .collect(),
+        })
     }
 
     fn blink(&mut self) {
@@ -60,7 +86,7 @@ impl Display for Stones {
 }
 
 struct Stone {
-    number: u128
+    number: u128,
 }
 
 impl Stone {
@@ -70,14 +96,21 @@ impl Stone {
 
     fn blink(&self) -> Vec<Self> {
         if self.number == 0 {
-            vec![Self {number: 1}]
+            vec![Self { number: 1 }]
         } else {
             let s = self.as_string();
             if s.len() % 2 == 0 {
                 let halfway = s.len() / 2;
-                vec![&s[..halfway], &s[halfway..]].iter().map(|sub| Self {number: sub.parse::<u128>().unwrap()}).collect()
+                vec![&s[..halfway], &s[halfway..]]
+                    .iter()
+                    .map(|sub| Self {
+                        number: sub.parse::<u128>().unwrap(),
+                    })
+                    .collect()
             } else {
-                vec![Self {number: self.number * 2024}]
+                vec![Self {
+                    number: self.number * 2024,
+                }]
             }
         }
     }
