@@ -28,23 +28,29 @@ fn main() -> anyhow::Result<()> {
 }
 
 struct StoneTable {
-    stoneblinks2count: HashMap<(Stone, usize), u128>
+    blinks2stones: Vec<HashMap<Stone, u128>>
 }
 
 impl StoneTable {
     fn new(filename: &str) -> anyhow::Result<Self> {
         let line = all_lines(filename)?.next().unwrap();
         Ok(Self {
-            stoneblinks2count: line.split_whitespace().map(|sn| ((Stone::new(sn.parse::<u128>().unwrap()), 0), 1)).collect()
+            blinks2stones: vec![line.split_whitespace().map(|sn| (Stone::new(sn.parse::<u128>().unwrap()), 1)).collect()]
         })
     }
 
     fn count(&self) -> u128 {
-        self.stoneblinks2count.values().sum()
+        self.blinks2stones.last().unwrap().values().sum()
     }
 
     fn blink(&mut self) {
-        
+        let mut new_line = HashMap::new();
+        for (stone, count) in self.blinks2stones.last().unwrap().iter() {
+            for new_stone in stone.blink() {
+                
+            }
+        }
+        self.blinks2stones.push(new_line);
     }
 }
 
