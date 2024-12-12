@@ -18,35 +18,68 @@ use multimap::MultiMap;
 fn main() -> anyhow::Result<()> {
     advent_main(|filename, part, _| {
         let garden = GridCharWorld::from_char_file(filename)?;
-        let points2regions = bfs_points2regions(&garden);
-        let regions = points2regions.values().copied().collect::<HashSet<_>>();
-        let areas = label2areas(&points2regions);
+        let (points2regions, first_found) = bfs_points2regions(&garden);
+        let regions = region2chars(&garden, &points2regions);
+        let areas = region2areas(&points2regions);
         let perimeters = match part {
             Part::One => perimeter1(&points2regions),
-            Part::Two => perimeter2(&garden, &points2regions),
+            Part::Two => perimeter2(&garden, &points2regions, &first_found, &regions),
         };
         let total = regions
-            .iter()
-            .map(|label| areas.count(&label) * perimeters.count(&label))
+            .keys()
+            .map(|region| areas.count(&region) * perimeters.count(&region))
             .sum::<usize>();
         println!("{total}");
         Ok(())
     })
 }
 
-fn label2areas(points2regions: &HashMap<Position, usize>) -> HashHistogram<usize> {
+fn region2areas(points2regions: &HashMap<Position, usize>) -> HashHistogram<usize> {
     points2regions.values().collect()
+}
+
+fn region2chars(garden: &GridCharWorld, points2regions: &HashMap<Position, usize>) -> HashMap<usize,char> {
+    let mut result = HashMap::new();
+    for (p, r) in points2regions.iter() {
+        if !result.contains_key(r) {
+            result.insert(*r, garden.value(*p).unwrap());
+        }
+    }
+    result
 }
 
 fn perimeter1(points2regions: &HashMap<Position, usize>) -> HashHistogram<usize> {
     let mut perimeters = HashHistogram::new();
-    for (p, label) in points2regions.iter() {
-        perimeters.bump_by(label, edge_count(*p, &points2regions));
+    for (p, region) in points2regions.iter() {
+        perimeters.bump_by(region, edge_count(*p, &points2regions));
     }
     perimeters
 }
 
-fn perimeter2(garden: &GridCharWorld, points2regions: &HashMap<Position, usize>) -> HashHistogram<usize> {
+fn perimeter2(garden: &GridCharWorld, points2regions: &HashMap<Position, usize>, first_found: &HashMap<usize, Position>, regions: &HashMap<usize,char>) -> HashHistogram<usize> {
+    let mut result = HashHistogram::new();
+    for (region, start) in first_found.iter() {
+        let start = EdgeFollower::new(*regions.get(region).unwrap(), *start);
+        let mut explorer = start;
+        loop {
+            if explorer.edge_on_right(garden) {
+                if explorer.blocked_ahead(garden) {
+                    explorer.left();
+                    result.bump(region);
+                } else {
+                    explorer.forward();
+                }
+            } else {
+                explorer.right();
+                explorer.forward();
+                result.bump(region);
+            }
+            if explorer == start {
+                break;
+            }
+        }
+    }
+    
     let mut corners = GridCharWorld::new(garden.width(), garden.height(), '.');
     println!("perimeter2");
     for (p, l) in points2regions.iter().filter(|(p, _)| point_corner(**p, points2regions)) {
@@ -55,7 +88,7 @@ fn perimeter2(garden: &GridCharWorld, points2regions: &HashMap<Position, usize>)
     println!("{garden}");
     println!();
     println!("{corners}");
-    HashHistogram::new()
+    result
 }
 
 fn point_corner(p: Position, points2regions: &HashMap<Position, usize>) -> bool {
@@ -68,12 +101,12 @@ fn is_corner(dirs: &Vec<ManhattanDir>) -> bool {
 }
 
 fn edges(p: Position, points2regions: &HashMap<Position, usize>) -> Vec<ManhattanDir> {
-    let label = points2regions.get(&p).unwrap();
+    let region = points2regions.get(&p).unwrap();
     all::<ManhattanDir>()
         .filter(|d| {
             points2regions
                 .get(&d.neighbor(p))
-                .map_or(true, |r| r != label)
+                .map_or(true, |r| r != region)
         }).collect()
 }
 
@@ -81,12 +114,16 @@ fn edge_count(p: Position, points2regions: &HashMap<Position, usize>) -> usize {
     edges(p, points2regions).len()
 }
 
-fn bfs_points2regions(garden: &GridCharWorld) -> HashMap<Position, usize> {
+fn bfs_points2regions(garden: &GridCharWorld) -> (HashMap<Position, usize>, HashMap<usize, Position>) {
     let mut current = 0;
     let mut result = HashMap::new();
+    let mut first_found = HashMap::new();
     for (p, v) in garden.position_value_iter() {
         if !result.contains_key(p) {
             breadth_first_search(p, |s, q| {
+                if !first_found.contains_key(&current) {
+                    first_found.insert(current, *s);
+                }
                 result.insert(*s, current);
                 for d in all::<ManhattanDir>() {
                     let n = d.neighbor(*s);
@@ -99,38 +136,48 @@ fn bfs_points2regions(garden: &GridCharWorld) -> HashMap<Position, usize> {
             current += 1;
         }
     }
-    result
+    (result, first_found)
 }
 
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 struct EdgeFollower {
+    c: char,
     p: Position,
     f: ManhattanDir,
 }
 
-
-
-fn count_sides(garden: &GridCharWorld, points2regions: &HashMap<Position, usize>) -> usize {
-    let mut sides = 0;
-
-    sides
-}
-
-#[derive(Default)]
-struct Corners {
-    x2ys: MultiMap<isize, isize>,
-    y2xs: MultiMap<isize, isize>,
-}
-
-impl Corners {
-    fn add(&mut self, corner: Position) {
-        self.x2ys.insert(corner[0], corner[1]);
-        self.y2xs.insert(corner[1], corner[0]);
+impl EdgeFollower {
+    fn new(c: char, p: Position) -> Self {
+        EdgeFollower { c, p, f: ManhattanDir::S }
     }
 
+    fn neighbor_in_region(&self, world: &GridCharWorld, dir: ManhattanDir) -> bool {
+        world.value(dir.neighbor(self.p)).map_or(false, |c| self.c == c)
+    }
 
+    fn edge_on_right(&self, world: &GridCharWorld) -> bool {
+        !self.neighbor_in_region(world, self.f.clockwise())
+    }
+
+    fn blocked_ahead(&self, world: &GridCharWorld) -> bool {
+        !self.neighbor_in_region(world, self.f)
+    }
+
+    fn forward(&mut self) {
+        self.p = self.f.neighbor(self.p);
+    }
+
+    fn left(&mut self) {
+        self.f = self.f.counterclockwise();
+    }
+
+    fn right(&mut self) {
+        self.f = self.f.clockwise();
+    }
 }
 
+// I want to test this against my BFS and figure out my mistake.
+#[allow(dead_code)]
 fn points2regions(garden: &GridCharWorld) -> HashMap<Position, usize> {
     let mut result = HashMap::new();
     let mut equivalencies = Labeler::default();
