@@ -22,7 +22,7 @@ fn main() -> anyhow::Result<()> {
         let areas = label2areas(&points2regions);
         let perimeters = match part {
             Part::One => perimeter1(&points2regions),
-            Part::Two => perimeter2(&points2regions),
+            Part::Two => perimeter2(&garden, &points2regions),
         };
         let total = regions
             .iter()
@@ -40,24 +40,48 @@ fn label2areas(points2regions: &HashMap<Position, usize>) -> HashHistogram<usize
 fn perimeter1(points2regions: &HashMap<Position, usize>) -> HashHistogram<usize> {
     let mut perimeters = HashHistogram::new();
     for (p, label) in points2regions.iter() {
-        perimeters.bump_by(label, edges(*p, &points2regions));
+        perimeters.bump_by(label, edge_count(*p, &points2regions));
     }
     perimeters
 }
 
-fn perimeter2(points2regions: &HashMap<Position, usize>) -> HashHistogram<usize> {
-    todo!()
+fn perimeter2(garden: &GridCharWorld, points2regions: &HashMap<Position, usize>) -> HashHistogram<usize> {
+    let mut corners = GridCharWorld::new(garden.width(), garden.height(), '.');
+    println!("perimeter2");
+    for (p, l) in points2regions.iter().filter(|(p, _)| point_corner(**p, points2regions)) {
+        corners.update(*p, garden.value(*p).unwrap());
+    }
+    println!("{garden}");
+    println!();
+    println!("{corners}");
+    HashHistogram::new()
 }
 
-fn edges(p: Position, points2regions: &HashMap<Position, usize>) -> usize {
+fn point_corner(p: Position, points2regions: &HashMap<Position, usize>) -> bool {
+    let edges = edges(p, points2regions);
+    edges.len() > 1 && is_corner(&edges)
+}
+
+fn is_corner(dirs: &Vec<ManhattanDir>) -> bool {
+    if dirs.len() == 2 {
+        dirs[0].inverse() != dirs[1]
+    } else {
+        true
+    }
+}
+
+fn edges(p: Position, points2regions: &HashMap<Position, usize>) -> Vec<ManhattanDir> {
     let label = points2regions.get(&p).unwrap();
     all::<ManhattanDir>()
         .filter(|d| {
             points2regions
                 .get(&d.neighbor(p))
                 .map_or(true, |r| r != label)
-        })
-        .count()
+        }).collect()
+}
+
+fn edge_count(p: Position, points2regions: &HashMap<Position, usize>) -> usize {
+    edges(p, points2regions).len()
 }
 
 fn bfs_points2regions(garden: &GridCharWorld) -> HashMap<Position, usize> {
