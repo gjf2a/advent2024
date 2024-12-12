@@ -62,11 +62,13 @@ fn perimeter2(
     first_found: &HashMap<usize, Position>,
     regions: &HashMap<usize, char>,
 ) -> HashHistogram<usize> {
+    let mut garden_copy = garden.clone();
     let mut result = HashHistogram::new();
     for (region, start) in first_found.iter() {
         let start = EdgeFollower::new(*regions.get(region).unwrap(), *start);
         let mut explorer = start;
         loop {
+            garden_copy.update(explorer.p, garden.value(explorer.p).unwrap().to_ascii_lowercase());
             if explorer.edge_on_right(garden) {
                 if explorer.blocked_ahead(garden) {
                     explorer.left();
@@ -78,13 +80,13 @@ fn perimeter2(
                 explorer.right();
                 explorer.forward();
                 result.bump(region);
-                assert!(!explorer.neighbor_in_region(garden, explorer.f.clockwise()));
             }
             if explorer == start {
                 break;
             }
         }
     }
+    println!("{garden_copy}");
     result
 }
 
