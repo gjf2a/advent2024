@@ -6,18 +6,17 @@ use std::{
 use advent2024::{
     advent_main,
     grid::GridCharWorld,
-    multidim::{DirType, ManhattanDir, Position},
+    multidim::{DirType, ManhattanDir, Position}, searchers::{breadth_first_search, ContinueSearch, SearchQueue},
 };
 use enum_iterator::all;
 use hash_histogram::HashHistogram;
 
-// Part 1: 1416388 too low. 
-//         1428164 is also too low.
+// Part 1: New version works. Still wondering about why Labeler is incorrect. 
 
 fn main() -> anyhow::Result<()> {
     advent_main(|filename, _part, _| {
         let garden = GridCharWorld::from_char_file(filename)?;
-        let points2regions = points2regions(&garden);
+        let points2regions = bfs_points2regions(&garden);
         let regions = points2regions.values().copied().collect::<HashSet<_>>();
         let mut areas = HashHistogram::<_, usize>::new();
         let mut perimeters = HashHistogram::new();
@@ -41,6 +40,27 @@ fn main() -> anyhow::Result<()> {
         println!("{total}");
         Ok(())
     })
+}
+
+fn bfs_points2regions(garden: &GridCharWorld) -> HashMap<Position, usize> {
+    let mut current = 0;
+    let mut result = HashMap::new();
+    for (p, v) in garden.position_value_iter() {
+        if !result.contains_key(p) {
+            breadth_first_search(p, |s, q| {
+                result.insert(*s, current);
+                for d in all::<ManhattanDir>() {
+                    let n = d.neighbor(*s);
+                    if garden.value(n).map_or(false, |c| c == *v) {
+                        q.enqueue(&n);
+                    }
+                }
+                ContinueSearch::Yes
+            });
+            current += 1;
+        }
+    }
+    result
 }
 
 fn points2regions(garden: &GridCharWorld) -> HashMap<Position, usize> {
