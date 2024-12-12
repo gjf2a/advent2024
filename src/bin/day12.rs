@@ -11,9 +11,8 @@ use advent2024::{
 use enum_iterator::all;
 use hash_histogram::HashHistogram;
 
-// Example:
-// Correct labels:
-// Incorrect labels;
+// Part 1: 1416388 too low. 
+//         1428164 is also too low.
 
 fn main() -> anyhow::Result<()> {
     advent_main(|filename, _part, _| {
@@ -97,13 +96,17 @@ impl Labeler {
     }
 
     fn mark_equal(&mut self, label1: usize, label2: usize) {
-        let keep = min(self.equivalencies[label1], self.equivalencies[label2]);
+        let keep = min(self.get(label1), self.get(label2));
         self.equivalencies[label1] = keep;
         self.equivalencies[label2] = keep;
     }
 
     fn get(&self, label: usize) -> usize {
-        self.equivalencies[label]
+        if self.equivalencies[label] == label {
+            label
+        } else {
+            self.get(self.equivalencies[label])
+        }
     }
 
     fn char_for(&self, label: usize) -> char {
