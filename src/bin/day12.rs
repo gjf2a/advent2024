@@ -11,6 +11,10 @@ use advent2024::{
 use enum_iterator::all;
 use hash_histogram::HashHistogram;
 
+// Example:
+// Correct labels:
+// Incorrect labels;
+
 fn main() -> anyhow::Result<()> {
     advent_main(|filename, _part, _| {
         let garden = GridCharWorld::from_char_file(filename)?;
@@ -32,7 +36,12 @@ fn main() -> anyhow::Result<()> {
             );
         }
         for label in regions.iter() {
-            println!("{label}:\t{}, {}, {}", areas.count(label), perimeters.count(label), areas.count(label) * perimeters.count(label));
+            println!(
+                "{label}:\t{}, {}, {}",
+                areas.count(label),
+                perimeters.count(label),
+                areas.count(label) * perimeters.count(label)
+            );
         }
         let total = regions
             .iter()
@@ -49,20 +58,25 @@ fn points2regions(garden: &GridCharWorld) -> HashMap<Position, usize> {
     for (p, v) in garden.position_value_iter() {
         let n_char_match = char_match_label(*v, ManhattanDir::N.neighbor(*p), garden, &result);
         let w_char_match = char_match_label(*v, ManhattanDir::W.neighbor(*p), garden, &result);
-        let label = match n_char_match {
-            None => match w_char_match {
-                None => equivalencies.new_label(),
+        let label = match w_char_match {
+            None => match n_char_match {
+                None => equivalencies.new_label(*v),
                 Some(l) => l,
             },
-            Some(nl) => {
-                if let Some(wl) = w_char_match {
+            Some(wl) => {
+                if let Some(nl) = n_char_match {
                     equivalencies.mark_equal(nl, wl);
                 }
-                nl
+                wl
             }
         };
+        println!("{p} {v}: {label}");
         result.insert(*p, label);
     }
+    for (l1, l2) in equivalencies.equivalencies.iter().enumerate() {
+        println!("{l1}: {l2}");
+    }
+    println!("{:?}", equivalencies.labels2chars());
     result
         .iter()
         .map(|(k, v)| (*k, equivalencies.get(*v)))
@@ -84,22 +98,36 @@ fn char_match_label(
 #[derive(Clone, Default)]
 struct Labeler {
     equivalencies: Vec<usize>,
+    chars: Vec<char>,
 }
 
 impl Labeler {
-    fn new_label(&mut self) -> usize {
+    fn new_label(&mut self, c: char) -> usize {
         let result = self.equivalencies.len();
         self.equivalencies.push(result);
+        self.chars.push(c);
         result
     }
 
     fn mark_equal(&mut self, label1: usize, label2: usize) {
-        let keep = min(label1, label2);
-        let redirect = max(label1, label2);
-        self.equivalencies[redirect] = keep;
+        let keep = min(self.equivalencies[label1], self.equivalencies[label2]);
+        self.equivalencies[label1] = keep;
+        self.equivalencies[label2] = keep;
     }
 
     fn get(&self, label: usize) -> usize {
         self.equivalencies[label]
+    }
+
+    fn char_for(&self, label: usize) -> char {
+        self.chars[self.get(label)]
+    }
+
+    fn labels2chars(&self) -> Vec<(usize, char)> {
+        let labels = self.equivalencies.iter().copied().collect::<HashSet<_>>();
+        labels
+            .iter()
+            .map(|label| (*label, self.char_for(*label)))
+            .collect()
     }
 }
