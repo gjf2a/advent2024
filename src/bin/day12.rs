@@ -1,5 +1,5 @@
 use std::{
-    cmp::{max, min},
+    cmp::min,
     collections::{HashMap, HashSet},
 };
 
@@ -35,14 +35,6 @@ fn main() -> anyhow::Result<()> {
                     .count(),
             );
         }
-        for label in regions.iter() {
-            println!(
-                "{label}:\t{}, {}, {}",
-                areas.count(label),
-                perimeters.count(label),
-                areas.count(label) * perimeters.count(label)
-            );
-        }
         let total = regions
             .iter()
             .map(|label| areas.count(&label) * perimeters.count(&label))
@@ -70,13 +62,8 @@ fn points2regions(garden: &GridCharWorld) -> HashMap<Position, usize> {
                 wl
             }
         };
-        println!("{p} {v}: {label}");
         result.insert(*p, label);
     }
-    for (l1, l2) in equivalencies.equivalencies.iter().enumerate() {
-        println!("{l1}: {l2}");
-    }
-    println!("{:?}", equivalencies.labels2chars());
     result
         .iter()
         .map(|(k, v)| (*k, equivalencies.get(*v)))
