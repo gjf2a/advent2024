@@ -51,7 +51,7 @@ fn points2regions(garden: &GridCharWorld) -> HashMap<Position, usize> {
         let w_char_match = char_match_label(*v, ManhattanDir::W.neighbor(*p), garden, &result);
         let label = match w_char_match {
             None => match n_char_match {
-                None => equivalencies.new_label(*v),
+                None => equivalencies.new_label(),
                 Some(l) => l,
             },
             Some(wl) => {
@@ -84,14 +84,12 @@ fn char_match_label(
 #[derive(Clone, Default)]
 struct Labeler {
     equivalencies: Vec<usize>,
-    chars: Vec<char>,
 }
 
 impl Labeler {
-    fn new_label(&mut self, c: char) -> usize {
+    fn new_label(&mut self) -> usize {
         let result = self.equivalencies.len();
         self.equivalencies.push(result);
-        self.chars.push(c);
         result
     }
 
@@ -107,17 +105,5 @@ impl Labeler {
         } else {
             self.get(self.equivalencies[label])
         }
-    }
-
-    fn char_for(&self, label: usize) -> char {
-        self.chars[self.get(label)]
-    }
-
-    fn labels2chars(&self) -> Vec<(usize, char)> {
-        let labels = self.equivalencies.iter().copied().collect::<HashSet<_>>();
-        labels
-            .iter()
-            .map(|label| (*label, self.char_for(*label)))
-            .collect()
     }
 }
