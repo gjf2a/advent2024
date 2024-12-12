@@ -63,11 +63,7 @@ fn point_corner(p: Position, points2regions: &HashMap<Position, usize>) -> bool 
 }
 
 fn is_corner(dirs: &Vec<ManhattanDir>) -> bool {
-    if dirs.len() == 2 {
-        dirs[0].inverse() != dirs[1]
-    } else {
-        true
-    }
+    dirs.len() > 2 || dirs[0].inverse() != dirs[1]
 }
 
 fn edges(p: Position, points2regions: &HashMap<Position, usize>) -> Vec<ManhattanDir> {
