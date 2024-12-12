@@ -19,31 +19,34 @@ fn main() -> anyhow::Result<()> {
         let garden = GridCharWorld::from_char_file(filename)?;
         let points2regions = bfs_points2regions(&garden);
         let regions = points2regions.values().copied().collect::<HashSet<_>>();
-        let total = match part {
-            Part::One => part1(&regions, &points2regions),
-            Part::Two => part2(&points2regions),
+        let areas = label2areas(&points2regions);
+        let perimeters = match part {
+            Part::One => perimeter1(&points2regions),
+            Part::Two => perimeter2(&points2regions),
         };
+        let total = regions
+            .iter()
+            .map(|label| areas.count(&label) * perimeters.count(&label))
+            .sum::<usize>();
         println!("{total}");
         Ok(())
     })
 }
 
-fn part1(regions: &HashSet<usize>, points2regions: &HashMap<Position, usize>) -> usize {
-    let mut areas = HashHistogram::<usize>::new();
-    let mut perimeters = HashHistogram::new();
-    for (p, label) in points2regions.iter() {
-        areas.bump(label);
-        perimeters.bump_by(label, edges(*p, &points2regions));
-    }
-    regions
-        .iter()
-        .map(|label| areas.count(&label) * perimeters.count(&label))
-        .sum()
+fn label2areas(points2regions: &HashMap<Position, usize>) -> HashHistogram<usize> {
+    points2regions.values().collect()
 }
 
-fn part2(points2regions: &HashMap<Position, usize>) -> usize {
-    
-    todo!();
+fn perimeter1(points2regions: &HashMap<Position, usize>) -> HashHistogram<usize> {
+    let mut perimeters = HashHistogram::new();
+    for (p, label) in points2regions.iter() {
+        perimeters.bump_by(label, edges(*p, &points2regions));
+    }
+    perimeters
+}
+
+fn perimeter2(points2regions: &HashMap<Position, usize>) -> HashHistogram<usize> {
+    todo!()
 }
 
 fn edges(p: Position, points2regions: &HashMap<Position, usize>) -> usize {
