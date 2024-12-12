@@ -6,40 +6,55 @@ use std::{
 use advent2024::{
     advent_main,
     grid::GridCharWorld,
-    multidim::{DirType, ManhattanDir, Position}, searchers::{breadth_first_search, ContinueSearch, SearchQueue},
+    multidim::{DirType, ManhattanDir, Position},
+    searchers::{breadth_first_search, ContinueSearch, SearchQueue}, Part,
 };
 use enum_iterator::all;
 use hash_histogram::HashHistogram;
 
-// Part 1: New version works. Still wondering about why Labeler is incorrect. 
+// Part 1: New version works. Still wondering about why Labeler is incorrect.
 
 fn main() -> anyhow::Result<()> {
-    advent_main(|filename, _part, _| {
+    advent_main(|filename, part, _| {
         let garden = GridCharWorld::from_char_file(filename)?;
         let points2regions = bfs_points2regions(&garden);
         let regions = points2regions.values().copied().collect::<HashSet<_>>();
-        let mut areas = HashHistogram::<_, usize>::new();
-        let mut perimeters = HashHistogram::new();
-        for (p, label) in points2regions.iter() {
-            areas.bump(label);
-            perimeters.bump_by(
-                label,
-                all::<ManhattanDir>()
-                    .filter(|d| {
-                        points2regions
-                            .get(&d.neighbor(*p))
-                            .map_or(true, |r| r != label)
-                    })
-                    .count(),
-            );
-        }
-        let total = regions
-            .iter()
-            .map(|label| areas.count(&label) * perimeters.count(&label))
-            .sum::<usize>();
+        let total = match part {
+            Part::One => part1(&regions, &points2regions),
+            Part::Two => part2(&points2regions),
+        };
         println!("{total}");
         Ok(())
     })
+}
+
+fn part1(regions: &HashSet<usize>, points2regions: &HashMap<Position, usize>) -> usize {
+    let mut areas = HashHistogram::<usize>::new();
+    let mut perimeters = HashHistogram::new();
+    for (p, label) in points2regions.iter() {
+        areas.bump(label);
+        perimeters.bump_by(label, edges(*p, &points2regions));
+    }
+    regions
+        .iter()
+        .map(|label| areas.count(&label) * perimeters.count(&label))
+        .sum()
+}
+
+fn part2(points2regions: &HashMap<Position, usize>) -> usize {
+    
+    todo!();
+}
+
+fn edges(p: Position, points2regions: &HashMap<Position, usize>) -> usize {
+    let label = points2regions.get(&p).unwrap();
+    all::<ManhattanDir>()
+        .filter(|d| {
+            points2regions
+                .get(&d.neighbor(p))
+                .map_or(true, |r| r != label)
+        })
+        .count()
 }
 
 fn bfs_points2regions(garden: &GridCharWorld) -> HashMap<Position, usize> {
