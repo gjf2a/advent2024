@@ -11,6 +11,7 @@ use advent2024::{
 };
 use enum_iterator::all;
 use hash_histogram::HashHistogram;
+use multimap::MultiMap;
 
 // Part 1: New version works. Still wondering about why Labeler is incorrect.
 
@@ -99,6 +100,35 @@ fn bfs_points2regions(garden: &GridCharWorld) -> HashMap<Position, usize> {
         }
     }
     result
+}
+
+#[derive(Copy, Clone, Default)]
+struct EdgeFollower {
+    p: Position,
+    f: ManhattanDir,
+}
+
+
+
+fn count_sides(garden: &GridCharWorld, points2regions: &HashMap<Position, usize>) -> usize {
+    let mut sides = 0;
+
+    sides
+}
+
+#[derive(Default)]
+struct Corners {
+    x2ys: MultiMap<isize, isize>,
+    y2xs: MultiMap<isize, isize>,
+}
+
+impl Corners {
+    fn add(&mut self, corner: Position) {
+        self.x2ys.insert(corner[0], corner[1]);
+        self.y2xs.insert(corner[1], corner[0]);
+    }
+
+
 }
 
 fn points2regions(garden: &GridCharWorld) -> HashMap<Position, usize> {

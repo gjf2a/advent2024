@@ -280,8 +280,9 @@ impl<D: DirType> Iterator for DirIter<D> {
     }
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Sequence, Hash)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Sequence, Hash, Default)]
 pub enum ManhattanDir {
+    #[default]
     N,
     E,
     S,
@@ -326,8 +327,9 @@ impl DirType for ManhattanDir {
     }
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Sequence, Hash)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Sequence, Hash, Default)]
 pub enum Dir {
+    #[default]
     N,
     Ne,
     E,
