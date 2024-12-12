@@ -11,6 +11,7 @@ use enum_iterator::all;
 use hash_histogram::HashHistogram;
 
 // Part 1: New version works. Still wondering about why Labeler is incorrect.
+// Part 2: 849746 is too low.
 
 fn main() -> anyhow::Result<()> {
     advent_main(|filename, part, _| {
@@ -77,6 +78,7 @@ fn perimeter2(
                 explorer.right();
                 explorer.forward();
                 result.bump(region);
+                assert!(!explorer.neighbor_in_region(garden, explorer.f.clockwise()));
             }
             if explorer == start {
                 break;
