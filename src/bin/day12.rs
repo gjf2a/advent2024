@@ -1,17 +1,14 @@
-use std::{
-    cmp::min,
-    collections::{HashMap, HashSet},
-};
+use std::{cmp::min, collections::HashMap};
 
 use advent2024::{
     advent_main,
     grid::GridCharWorld,
     multidim::{DirType, ManhattanDir, Position},
-    searchers::{breadth_first_search, ContinueSearch, SearchQueue}, Part,
+    searchers::{breadth_first_search, ContinueSearch, SearchQueue},
+    Part,
 };
 use enum_iterator::all;
 use hash_histogram::HashHistogram;
-use multimap::MultiMap;
 
 // Part 1: New version works. Still wondering about why Labeler is incorrect.
 
@@ -23,7 +20,7 @@ fn main() -> anyhow::Result<()> {
         let areas = region2areas(&points2regions);
         let perimeters = match part {
             Part::One => perimeter1(&points2regions),
-            Part::Two => perimeter2(&garden, &points2regions, &first_found, &regions),
+            Part::Two => perimeter2(&garden, &first_found, &regions),
         };
         let total = regions
             .keys()
@@ -38,7 +35,10 @@ fn region2areas(points2regions: &HashMap<Position, usize>) -> HashHistogram<usiz
     points2regions.values().collect()
 }
 
-fn region2chars(garden: &GridCharWorld, points2regions: &HashMap<Position, usize>) -> HashMap<usize,char> {
+fn region2chars(
+    garden: &GridCharWorld,
+    points2regions: &HashMap<Position, usize>,
+) -> HashMap<usize, char> {
     let mut result = HashMap::new();
     for (p, r) in points2regions.iter() {
         if !result.contains_key(r) {
@@ -56,7 +56,11 @@ fn perimeter1(points2regions: &HashMap<Position, usize>) -> HashHistogram<usize>
     perimeters
 }
 
-fn perimeter2(garden: &GridCharWorld, points2regions: &HashMap<Position, usize>, first_found: &HashMap<usize, Position>, regions: &HashMap<usize,char>) -> HashHistogram<usize> {
+fn perimeter2(
+    garden: &GridCharWorld,
+    first_found: &HashMap<usize, Position>,
+    regions: &HashMap<usize, char>,
+) -> HashHistogram<usize> {
     let mut result = HashHistogram::new();
     for (region, start) in first_found.iter() {
         let start = EdgeFollower::new(*regions.get(region).unwrap(), *start);
@@ -79,25 +83,7 @@ fn perimeter2(garden: &GridCharWorld, points2regions: &HashMap<Position, usize>,
             }
         }
     }
-    
-    let mut corners = GridCharWorld::new(garden.width(), garden.height(), '.');
-    println!("perimeter2");
-    for (p, l) in points2regions.iter().filter(|(p, _)| point_corner(**p, points2regions)) {
-        corners.update(*p, garden.value(*p).unwrap());
-    }
-    println!("{garden}");
-    println!();
-    println!("{corners}");
     result
-}
-
-fn point_corner(p: Position, points2regions: &HashMap<Position, usize>) -> bool {
-    let edges = edges(p, points2regions);
-    edges.len() > 1 && is_corner(&edges)
-}
-
-fn is_corner(dirs: &Vec<ManhattanDir>) -> bool {
-    dirs.len() > 2 || dirs[0].inverse() != dirs[1]
 }
 
 fn edges(p: Position, points2regions: &HashMap<Position, usize>) -> Vec<ManhattanDir> {
@@ -107,14 +93,17 @@ fn edges(p: Position, points2regions: &HashMap<Position, usize>) -> Vec<Manhatta
             points2regions
                 .get(&d.neighbor(p))
                 .map_or(true, |r| r != region)
-        }).collect()
+        })
+        .collect()
 }
 
 fn edge_count(p: Position, points2regions: &HashMap<Position, usize>) -> usize {
     edges(p, points2regions).len()
 }
 
-fn bfs_points2regions(garden: &GridCharWorld) -> (HashMap<Position, usize>, HashMap<usize, Position>) {
+fn bfs_points2regions(
+    garden: &GridCharWorld,
+) -> (HashMap<Position, usize>, HashMap<usize, Position>) {
     let mut current = 0;
     let mut result = HashMap::new();
     let mut first_found = HashMap::new();
@@ -148,11 +137,17 @@ struct EdgeFollower {
 
 impl EdgeFollower {
     fn new(c: char, p: Position) -> Self {
-        EdgeFollower { c, p, f: ManhattanDir::S }
+        EdgeFollower {
+            c,
+            p,
+            f: ManhattanDir::S,
+        }
     }
 
     fn neighbor_in_region(&self, world: &GridCharWorld, dir: ManhattanDir) -> bool {
-        world.value(dir.neighbor(self.p)).map_or(false, |c| self.c == c)
+        world
+            .value(dir.neighbor(self.p))
+            .map_or(false, |c| self.c == c)
     }
 
     fn edge_on_right(&self, world: &GridCharWorld) -> bool {
