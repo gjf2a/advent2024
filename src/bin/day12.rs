@@ -1,4 +1,7 @@
-use std::{cmp::min, collections::{HashMap, HashSet}};
+use std::{
+    cmp::min,
+    collections::{HashMap, HashSet},
+};
 
 use advent2024::{
     advent_main,
@@ -9,9 +12,23 @@ use advent2024::{
 };
 use enum_iterator::all;
 use hash_histogram::HashHistogram;
+use multimap::MultiMap;
 
 // Part 1: New version works. Still wondering about why Labeler is incorrect.
 // Part 2: 849746 is too low. 887098 is too high. 858973 is too low.
+//         872934 is simply incorrect.
+
+// Day12 segment
+// G - area 28, sides 6 = 168
+// E - area  1, sides 4 = 4
+// P - area 11, sides 9 = 99
+// T - area 15, sides 15 = 225
+// K - area 1, sides 4 = 4
+// K - area 1, sides 4 = 4
+// Q - area 3, sides 4 = 12
+// Total: 168 + 4 + 99 + 225 + 4 + 4 = 336 + 168 = 504
+// Actual:  4, 360, 12, 168, 4, 4, 132
+// w/o int: 4, 210, 12, 168, 4, 4, 88
 
 fn main() -> anyhow::Result<()> {
     advent_main(|filename, part, _| {
@@ -26,6 +43,7 @@ fn main() -> anyhow::Result<()> {
         let total = regions
             .keys()
             .map(|region| areas.count(&region) * perimeters.count(&region))
+            .inspect(|n| println!("{n}"))
             .sum::<usize>();
         println!("{total}");
         Ok(())
@@ -63,18 +81,18 @@ fn perimeter2(
     regions: &HashMap<usize, char>,
     points2regions: &HashMap<Position, usize>,
 ) -> HashHistogram<usize> {
-    let mut garden_copy = garden.clone();
     let mut result = HashHistogram::new();
     let mut inside_sides = HashHistogram::new();
+    let mut region_border = MultiMap::new();
     for (region, start) in first_found.iter() {
         let start = EdgeFollower::new(*regions.get(region).unwrap(), *start);
-        let mut neighboring_regions = HashSet::new();
+        let mut neighboring_regions = MultiMap::new();
         let mut explorer = start;
         loop {
-            garden_copy.update(explorer.p, garden.value(explorer.p).unwrap().to_ascii_lowercase());
+            region_border.insert(*region, explorer.p);
             if let Some(outside_right) = explorer.outside_to_right(garden) {
                 if let Some(outside_region) = points2regions.get(&outside_right) {
-                    neighboring_regions.insert(*outside_region);
+                    neighboring_regions.insert(*outside_region, outside_right);
                 }
                 if explorer.blocked_ahead(garden) {
                     explorer.left();
@@ -88,9 +106,11 @@ fn perimeter2(
                 result.bump(region);
             }
             if explorer == start {
-                if neighboring_regions.len() == 1 {
-                    let surrounder = neighboring_regions.iter().next().unwrap();
-                    inside_sides.bump_by(surrounder, result.count(region));
+                if neighboring_regions.keys().count() == 1 {
+                    let (surrounder, points) = neighboring_regions.iter_all().next().unwrap();
+                    if points.iter().all(|v| !region_border.get_vec(surrounder).map_or(false, |vec| vec.contains(v))) {
+                        inside_sides.bump_by(surrounder, result.count(region));
+                    }
                 }
                 break;
             }
@@ -99,7 +119,6 @@ fn perimeter2(
     for (region, inside_count) in inside_sides.iter() {
         result.bump_by(region, *inside_count);
     }
-    println!("{garden_copy}");
     result
 }
 
@@ -165,7 +184,13 @@ impl EdgeFollower {
         let neighbor = dir.neighbor(self.p);
         match world.value(neighbor) {
             None => Some(neighbor),
-            Some(c) => if self.c == c {None} else {Some(neighbor)},
+            Some(c) => {
+                if self.c == c {
+                    None
+                } else {
+                    Some(neighbor)
+                }
+            }
         }
     }
 
