@@ -1,7 +1,4 @@
-use std::{
-    cmp::min,
-    collections::{HashMap, HashSet},
-};
+use std::{cmp::min, collections::HashMap};
 
 use advent2024::{
     advent_main,
@@ -12,28 +9,11 @@ use advent2024::{
 };
 use enum_iterator::all;
 use hash_histogram::HashHistogram;
-use multimap::MultiMap;
-
-// Part 1: New version works. Still wondering about why Labeler is incorrect.
-// Part 2: 849746 is too low. 887098 is too high. 858973 is too low.
-//         872934 is simply incorrect.
-
-// Day12 segment
-// G - area 28, sides 6 = 168
-// E - area  1, sides 4 = 4
-// P - area 11, sides 9 = 99
-// T - area 15, sides 15 = 225
-// K - area 1, sides 4 = 4
-// K - area 1, sides 4 = 4
-// Q - area 3, sides 4 = 12
-// Total: 168 + 4 + 99 + 225 + 4 + 4 = 336 + 168 = 504
-// Actual:  4, 360, 12, 168, 4, 4, 132
-// w/o int: 4, 210, 12, 168, 4, 4, 88
 
 fn main() -> anyhow::Result<()> {
     advent_main(|filename, part, _| {
         let garden = GridCharWorld::from_char_file(filename)?;
-        let (points2regions, first_found) = bfs_points2regions(&garden);
+        let points2regions = bfs_points2regions(&garden);
         let regions = region2chars(&garden, &points2regions);
         let areas = region2areas(&points2regions);
         let perimeters = match part {
@@ -42,9 +22,7 @@ fn main() -> anyhow::Result<()> {
         };
         let total = regions
             .keys()
-            .inspect(|r| print!("region {r}: "))
             .map(|region| areas.count(&region) * perimeters.count(&region))
-            .inspect(|n| println!("{n}"))
             .sum::<usize>();
         println!("{total}");
         Ok(())
@@ -85,14 +63,12 @@ fn perimeter2(points2regions: &HashMap<Position, usize>) -> HashHistogram<usize>
             let off_region = neighbor_region(p, off, points2regions);
             if !regions_eq(Some(*region), off_region) && !regions_eq(Some(*region), dir_region) {
                 sides.bump(region);
-                println!("outer: {region}");
                 if regions_eq(dir_region, off_region) {
                     if let Some(outer_region) = dir_region {
                         let diag = Dir::from(dir).clockwise();
                         if let Some(diag_region) = points2regions.get(&diag.neighbor(*p)) {
                             if *diag_region == outer_region {
                                 sides.bump(&outer_region);
-                                println!("inner: {outer_region}");
                             }
                         }
                     }
@@ -100,11 +76,14 @@ fn perimeter2(points2regions: &HashMap<Position, usize>) -> HashHistogram<usize>
             }
         }
     }
-    println!("{sides}");
     sides
 }
 
-fn neighbor_region(p: &Position, dir: ManhattanDir, points2regions: &HashMap<Position, usize>) -> Option<usize> {
+fn neighbor_region(
+    p: &Position,
+    dir: ManhattanDir,
+    points2regions: &HashMap<Position, usize>,
+) -> Option<usize> {
     let np = dir.neighbor(*p);
     points2regions.get(&np).copied()
 }
@@ -114,56 +93,9 @@ fn regions_eq(r1: Option<usize>, r2: Option<usize>) -> bool {
         None => r2.is_none(),
         Some(r1) => match r2 {
             None => false,
-            Some(r2) => r1 == r2
-        }
+            Some(r2) => r1 == r2,
+        },
     }
-}
-
-fn perimeter2_bug(
-    garden: &GridCharWorld,
-    first_found: &HashMap<usize, Position>,
-    regions: &HashMap<usize, char>,
-    points2regions: &HashMap<Position, usize>,
-) -> HashHistogram<usize> {
-    let mut result = HashHistogram::new();
-    let mut inside_sides = HashHistogram::new();
-    let mut region_border = MultiMap::new();
-    for (region, start) in first_found.iter() {
-        let start = EdgeFollower::new(*regions.get(region).unwrap(), *start);
-        let mut neighboring_regions = MultiMap::new();
-        let mut explorer = start;
-        loop {
-            region_border.insert(*region, explorer.p);
-            if let Some(outside_right) = explorer.outside_to_right(garden) {
-                if let Some(outside_region) = points2regions.get(&outside_right) {
-                    neighboring_regions.insert(*outside_region, outside_right);
-                }
-                if explorer.blocked_ahead(garden) {
-                    explorer.left();
-                    result.bump(region);
-                } else {
-                    explorer.forward();
-                }
-            } else {
-                explorer.right();
-                explorer.forward();
-                result.bump(region);
-            }
-            if explorer == start {
-                if neighboring_regions.keys().count() == 1 {
-                    let (surrounder, points) = neighboring_regions.iter_all().next().unwrap();
-                    if points.iter().all(|v| !region_border.get_vec(surrounder).map_or(false, |vec| vec.contains(v))) {
-                        inside_sides.bump_by(surrounder, result.count(region));
-                    }
-                }
-                break;
-            }
-        }
-    }
-    for (region, inside_count) in inside_sides.iter() {
-        result.bump_by(region, *inside_count);
-    }
-    result
 }
 
 fn edges(p: Position, points2regions: &HashMap<Position, usize>) -> Vec<ManhattanDir> {
@@ -181,18 +113,12 @@ fn edge_count(p: Position, points2regions: &HashMap<Position, usize>) -> usize {
     edges(p, points2regions).len()
 }
 
-fn bfs_points2regions(
-    garden: &GridCharWorld,
-) -> (HashMap<Position, usize>, HashMap<usize, Position>) {
+fn bfs_points2regions(garden: &GridCharWorld) -> HashMap<Position, usize> {
     let mut current = 0;
     let mut result = HashMap::new();
-    let mut first_found = HashMap::new();
     for (p, v) in garden.position_value_iter() {
         if !result.contains_key(p) {
             breadth_first_search(p, |s, q| {
-                if !first_found.contains_key(&current) {
-                    first_found.insert(current, *s);
-                }
                 result.insert(*s, current);
                 for d in all::<ManhattanDir>() {
                     let n = d.neighbor(*s);
@@ -205,64 +131,7 @@ fn bfs_points2regions(
             current += 1;
         }
     }
-    (result, first_found)
-}
-
-#[derive(Copy, Clone, Eq, PartialEq)]
-struct EdgeFollower {
-    c: char,
-    p: Position,
-    f: ManhattanDir,
-}
-
-impl EdgeFollower {
-    fn new(c: char, p: Position) -> Self {
-        EdgeFollower {
-            c,
-            p,
-            f: ManhattanDir::S,
-        }
-    }
-
-    fn outside_neighbor(&self, world: &GridCharWorld, dir: ManhattanDir) -> Option<Position> {
-        let neighbor = dir.neighbor(self.p);
-        match world.value(neighbor) {
-            None => Some(neighbor),
-            Some(c) => {
-                if self.c == c {
-                    None
-                } else {
-                    Some(neighbor)
-                }
-            }
-        }
-    }
-
-    fn neighbor_in_region(&self, world: &GridCharWorld, dir: ManhattanDir) -> bool {
-        world
-            .value(dir.neighbor(self.p))
-            .map_or(false, |c| self.c == c)
-    }
-
-    fn outside_to_right(&self, world: &GridCharWorld) -> Option<Position> {
-        self.outside_neighbor(world, self.f.clockwise())
-    }
-
-    fn blocked_ahead(&self, world: &GridCharWorld) -> bool {
-        !self.neighbor_in_region(world, self.f)
-    }
-
-    fn forward(&mut self) {
-        self.p = self.f.neighbor(self.p);
-    }
-
-    fn left(&mut self) {
-        self.f = self.f.counterclockwise();
-    }
-
-    fn right(&mut self) {
-        self.f = self.f.clockwise();
-    }
+    result
 }
 
 // I want to test this against my BFS and figure out my mistake.
