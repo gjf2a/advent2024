@@ -11,6 +11,8 @@ use std::{
     time::Instant,
 };
 
+use num::Num;
+
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub enum Part {
     One,
@@ -55,6 +57,15 @@ pub fn all_lines_wrap(filename: &str) -> io::Result<Lines<BufReader<File>>> {
 
 pub fn all_lines(filename: &str) -> io::Result<impl Iterator<Item = String>> {
     Ok(all_lines_wrap(filename)?.map(|line| line.unwrap()))
+}
+
+pub fn gcd<N: Num + Copy>(a: N, b: N) -> N {
+    let r = a % b;
+    if r == num::zero() {
+        b
+    } else {
+        gcd(b, r)
+    }
 }
 
 #[cfg(test)]
