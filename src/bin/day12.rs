@@ -38,10 +38,11 @@ fn main() -> anyhow::Result<()> {
         let areas = region2areas(&points2regions);
         let perimeters = match part {
             Part::One => perimeter1(&points2regions),
-            Part::Two => perimeter2(&garden, &first_found, &regions, &points2regions),
+            Part::Two => perimeter2(&points2regions),
         };
         let total = regions
             .keys()
+            .inspect(|r| print!("region {r}: "))
             .map(|region| areas.count(&region) * perimeters.count(&region))
             .inspect(|n| println!("{n}"))
             .sum::<usize>();
@@ -75,7 +76,43 @@ fn perimeter1(points2regions: &HashMap<Position, usize>) -> HashHistogram<usize>
     perimeters
 }
 
-fn perimeter2(
+fn perimeter2(points2regions: &HashMap<Position, usize>) -> HashHistogram<usize> {
+    let mut sides = HashHistogram::new();
+    for (p, region) in points2regions.iter() {
+        for dir in all::<ManhattanDir>() {
+            let off = dir.clockwise();
+            let dir_region = neighbor_region(p, dir, points2regions);
+            let off_region = neighbor_region(p, off, points2regions);
+            if !regions_eq(Some(*region), off_region) && !regions_eq(Some(*region), dir_region) {
+                sides.bump(region);
+                if regions_eq(dir_region, off_region) {
+                    if let Some(outer_region) = dir_region {
+                        sides.bump(&outer_region);
+                    }
+                }
+            }
+        }
+    }
+    println!("{sides}");
+    sides
+}
+
+fn neighbor_region(p: &Position, dir: ManhattanDir, points2regions: &HashMap<Position, usize>) -> Option<usize> {
+    let np = dir.neighbor(*p);
+    points2regions.get(&np).copied()
+}
+
+fn regions_eq(r1: Option<usize>, r2: Option<usize>) -> bool {
+    match r1 {
+        None => r2.is_none(),
+        Some(r1) => match r2 {
+            None => false,
+            Some(r2) => r1 == r2
+        }
+    }
+}
+
+fn perimeter2_bug(
     garden: &GridCharWorld,
     first_found: &HashMap<usize, Position>,
     regions: &HashMap<usize, char>,
