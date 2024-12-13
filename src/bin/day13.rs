@@ -2,12 +2,16 @@ use std::cmp::min;
 
 use advent2024::{advent_main, all_lines, multidim::Position, Part};
 use memoize::memoize;
+use bare_metal_modulo::ModNum;
 
 fn main() -> anyhow::Result<()> {
     advent_main(|filename, part, options| {
         let mut inputs = vec![];
         let mut total = 0;
-        for line in all_lines(filename)? {
+        for line in all_lines(filename)?.filter(|line| line.len() > 0) {
+            let re = regex::Regex::new(r"\d+")?;
+            let nums = re.find_iter(line.as_str()).map(|s| s.as_str().parse::<isize>().unwrap()).collect::<Vec<_>>();
+            inputs.push(Position::new([nums[0], nums[1]]));
             if inputs.len() == 3 {
                 let a = inputs[0];
                 let b = inputs[1];
@@ -15,17 +19,15 @@ fn main() -> anyhow::Result<()> {
                     Part::One => inputs[2],
                     Part::Two => inputs[2] + Position::new([10000000000000, 10000000000000]),
                 };
+                show_modular_solution(a, b, goal);
                 let cost = if options.contains(&"-brute") {
                     brute_force_tokens(inputs, 100)
                 } else {
                     cheapest(goal, a, b)
                 };
+                println!("{cost:?}");
                 total += cost.unwrap_or(0);
                 inputs = vec![];
-            } else {
-                let re = regex::Regex::new(r"\d+")?;
-                let nums = re.find_iter(line.as_str()).map(|s| s.as_str().parse::<isize>().unwrap()).collect::<Vec<_>>();
-                inputs.push(Position::new([nums[0], nums[1]]));
             }
         }
         println!("{total}");
@@ -69,4 +71,15 @@ fn cheapest(p: Position, a: Position, b: Position) -> Option<isize> {
             }
         }
     }
+}
+
+fn show_modular_solution(a: Position, b: Position, goal: Position) {
+    println!("a: {a} b: {b} goal: {goal}");
+    let m1 = ModNum::new(goal[0], a[0]);
+    let m2 = ModNum::new(goal[0], b[0]);
+    println!("xs: {}", m1.chinese_remainder(m2));
+
+    let m1 = ModNum::new(goal[1], a[1]);
+    let m2 = ModNum::new(goal[1], b[1]);
+    println!("ys: {}", m1.chinese_remainder(m2));
 }
