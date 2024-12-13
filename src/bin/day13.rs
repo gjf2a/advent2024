@@ -4,7 +4,7 @@ use advent2024::{advent_main, all_lines, multidim::Position, Part};
 use memoize::memoize;
 
 fn main() -> anyhow::Result<()> {
-    advent_main(|filename, part, _| {
+    advent_main(|filename, part, options| {
         let mut inputs = vec![];
         let mut total = 0;
         for line in all_lines(filename)? {
@@ -15,7 +15,12 @@ fn main() -> anyhow::Result<()> {
                     Part::One => inputs[2],
                     Part::Two => inputs[2] + Position::new([10000000000000, 10000000000000]),
                 };
-                total += cheapest(goal, a, b).unwrap_or(0);
+                let cost = if options.contains(&"-brute") {
+                    brute_force_tokens(inputs, 100)
+                } else {
+                    cheapest(goal, a, b)
+                };
+                total += cost.unwrap_or(0);
                 inputs = vec![];
             } else {
                 let re = regex::Regex::new(r"\d+")?;
@@ -45,18 +50,6 @@ fn brute_force_tokens(inputs: Vec<Position>, max_presses: isize) -> Option<isize
         }
     }
     best
-}
-
-// Dynamic programming recurrence:
-//
-// cost(position) = min(cost(position - a) + 3, cost(position - b) + 1)
-// cost((0, 0)) = 0
-// cost((-x, -y)) = None
-fn smarter_tokens(inputs: Vec<Position>) -> Option<isize> {
-    let button_a = inputs[0];
-    let button_b = inputs[1];
-    let goal = inputs[2] + Position::new([10000000000000, 10000000000000]);
-    cheapest(goal, button_a, button_b)
 }
 
 #[memoize]
