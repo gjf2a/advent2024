@@ -1,4 +1,4 @@
-use std::{cmp::min, collections::HashMap};
+use std::{cmp::min, collections::{HashMap, HashSet}};
 
 use advent2024::{
     advent_main,
@@ -11,7 +11,7 @@ use enum_iterator::all;
 use hash_histogram::HashHistogram;
 
 // Part 1: New version works. Still wondering about why Labeler is incorrect.
-// Part 2: 849746 is too low.
+// Part 2: 849746 is too low. 887098 is too high. 858973 is too low.
 
 fn main() -> anyhow::Result<()> {
     advent_main(|filename, part, _| {
@@ -21,7 +21,7 @@ fn main() -> anyhow::Result<()> {
         let areas = region2areas(&points2regions);
         let perimeters = match part {
             Part::One => perimeter1(&points2regions),
-            Part::Two => perimeter2(&garden, &first_found, &regions),
+            Part::Two => perimeter2(&garden, &first_found, &regions, &points2regions),
         };
         let total = regions
             .keys()
@@ -61,15 +61,21 @@ fn perimeter2(
     garden: &GridCharWorld,
     first_found: &HashMap<usize, Position>,
     regions: &HashMap<usize, char>,
+    points2regions: &HashMap<Position, usize>,
 ) -> HashHistogram<usize> {
     let mut garden_copy = garden.clone();
     let mut result = HashHistogram::new();
+    let mut inside_sides = HashHistogram::new();
     for (region, start) in first_found.iter() {
         let start = EdgeFollower::new(*regions.get(region).unwrap(), *start);
+        let mut neighboring_regions = HashSet::new();
         let mut explorer = start;
         loop {
             garden_copy.update(explorer.p, garden.value(explorer.p).unwrap().to_ascii_lowercase());
-            if explorer.edge_on_right(garden) {
+            if let Some(outside_right) = explorer.outside_to_right(garden) {
+                if let Some(outside_region) = points2regions.get(&outside_right) {
+                    neighboring_regions.insert(*outside_region);
+                }
                 if explorer.blocked_ahead(garden) {
                     explorer.left();
                     result.bump(region);
@@ -82,9 +88,16 @@ fn perimeter2(
                 result.bump(region);
             }
             if explorer == start {
+                if neighboring_regions.len() == 1 {
+                    let surrounder = neighboring_regions.iter().next().unwrap();
+                    inside_sides.bump_by(surrounder, result.count(region));
+                }
                 break;
             }
         }
+    }
+    for (region, inside_count) in inside_sides.iter() {
+        result.bump_by(region, *inside_count);
     }
     println!("{garden_copy}");
     result
@@ -148,14 +161,22 @@ impl EdgeFollower {
         }
     }
 
+    fn outside_neighbor(&self, world: &GridCharWorld, dir: ManhattanDir) -> Option<Position> {
+        let neighbor = dir.neighbor(self.p);
+        match world.value(neighbor) {
+            None => Some(neighbor),
+            Some(c) => if self.c == c {None} else {Some(neighbor)},
+        }
+    }
+
     fn neighbor_in_region(&self, world: &GridCharWorld, dir: ManhattanDir) -> bool {
         world
             .value(dir.neighbor(self.p))
             .map_or(false, |c| self.c == c)
     }
 
-    fn edge_on_right(&self, world: &GridCharWorld) -> bool {
-        !self.neighbor_in_region(world, self.f.clockwise())
+    fn outside_to_right(&self, world: &GridCharWorld) -> Option<Position> {
+        self.outside_neighbor(world, self.f.clockwise())
     }
 
     fn blocked_ahead(&self, world: &GridCharWorld) -> bool {
