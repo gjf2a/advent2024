@@ -85,9 +85,11 @@ fn perimeter2(points2regions: &HashMap<Position, usize>) -> HashHistogram<usize>
             let off_region = neighbor_region(p, off, points2regions);
             if !regions_eq(Some(*region), off_region) && !regions_eq(Some(*region), dir_region) {
                 sides.bump(region);
+                println!("outer: {region}");
                 if regions_eq(dir_region, off_region) {
                     if let Some(outer_region) = dir_region {
                         sides.bump(&outer_region);
+                        println!("inner: {outer_region}");
                     }
                 }
             }
