@@ -1,8 +1,7 @@
 use std::cmp::min;
 
 use advent2024::{advent_main, all_lines, multidim::Position, Part};
-use memoize::memoize;
-use bare_metal_modulo::ModNum;
+use num::integer::gcd;
 
 fn main() -> anyhow::Result<()> {
     advent_main(|filename, part, options| {
@@ -19,7 +18,6 @@ fn main() -> anyhow::Result<()> {
                     Part::One => inputs[2],
                     Part::Two => inputs[2] + Position::new([10000000000000, 10000000000000]),
                 };
-                show_modular_solution(a, b, goal);
                 let cost = if options.contains(&"-brute") {
                     brute_force_tokens(inputs, 100)
                 } else {
@@ -45,41 +43,21 @@ fn brute_force_tokens(inputs: Vec<Position>, max_presses: isize) -> Option<isize
             let location = button_a * a + button_b * b;
             if location == goal {
                 let tokens = a * 3 + b;
-                if best.map_or(true, |b| tokens < b) {
-                    best = Some(tokens);
+                if best.map_or(true, |(b, _, _)| tokens < b) {
+                    best = Some((tokens, a, b));
                 }
             }
         }
     }
-    best
+    println!("Winner: {best:?}");
+    best.map(|b| b.0)
 }
 
-#[memoize]
-fn cheapest(p: Position, a: Position, b: Position) -> Option<isize> {
-    if p[0] < 0 || p[1] < 0 {
-        None
-    } else if p == Position::new([0, 0]) {
-        Some(0)
+fn cheapest(goal: Position, a: Position, b: Position) -> Option<isize> {
+    let exists = a.values().zip(b.values()).zip(goal.values()).all(|((ca, cb), cg)| cg % gcd(ca, cb) == 0);
+    if exists {
+        todo!()
     } else {
-        let press_a = cheapest(p - a, a, b).map(|c| c + 3);
-        let press_b = cheapest(p - b, a, b).map(|c| c + 1);
-        match press_a {
-            None => press_b,
-            Some(cost_a) => match press_b {
-                None => press_a,
-                Some(cost_b) => Some(min(cost_a, cost_b))
-            }
-        }
+        None
     }
-}
-
-fn show_modular_solution(a: Position, b: Position, goal: Position) {
-    println!("a: {a} b: {b} goal: {goal}");
-    let m1 = ModNum::new(goal[0], a[0]);
-    let m2 = ModNum::new(goal[0], b[0]);
-    println!("xs: {}", m1.chinese_remainder(m2));
-
-    let m1 = ModNum::new(goal[1], a[1]);
-    let m2 = ModNum::new(goal[1], b[1]);
-    println!("ys: {}", m1.chinese_remainder(m2));
 }
