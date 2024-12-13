@@ -397,6 +397,17 @@ impl Dir {
     }
 }
 
+impl From<ManhattanDir> for Dir {
+    fn from(value: ManhattanDir) -> Self {
+        match value {
+            ManhattanDir::N => Self::N,
+            ManhattanDir::E => Self::E,
+            ManhattanDir::S => Self::S,
+            ManhattanDir::W => Self::W,
+        }
+    }
+}
+
 pub fn normalize_degrees(degrees: isize) -> isize {
     let mut degrees = degrees;
     while degrees < 0 {
