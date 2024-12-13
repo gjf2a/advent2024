@@ -6,7 +6,7 @@ use std::{
 use advent2024::{
     advent_main,
     grid::GridCharWorld,
-    multidim::{DirType, ManhattanDir, Position},
+    multidim::{Dir, DirType, ManhattanDir, Position},
     searchers::{breadth_first_search, ContinueSearch, SearchQueue},
     Part,
 };
@@ -88,8 +88,13 @@ fn perimeter2(points2regions: &HashMap<Position, usize>) -> HashHistogram<usize>
                 println!("outer: {region}");
                 if regions_eq(dir_region, off_region) {
                     if let Some(outer_region) = dir_region {
-                        sides.bump(&outer_region);
-                        println!("inner: {outer_region}");
+                        let diag = Dir::from(dir).clockwise();
+                        if let Some(diag_region) = points2regions.get(&diag.neighbor(*p)) {
+                            if *diag_region == outer_region {
+                                sides.bump(&outer_region);
+                                println!("inner: {outer_region}");
+                            }
+                        }
                     }
                 }
             }
