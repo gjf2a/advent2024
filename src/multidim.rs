@@ -8,6 +8,7 @@ use std::{
     str::FromStr,
 };
 
+use anyhow::anyhow;
 use bare_metal_modulo::NumType;
 use enum_iterator::Sequence;
 
@@ -452,6 +453,20 @@ impl From<ManhattanDir> for Dir {
             ManhattanDir::E => Self::E,
             ManhattanDir::S => Self::S,
             ManhattanDir::W => Self::W,
+        }
+    }
+}
+
+impl TryFrom<Dir> for ManhattanDir {
+    type Error = anyhow::Error;
+
+    fn try_from(value: Dir) -> Result<Self, Self::Error> {
+        match value {
+            Dir::N => Ok(ManhattanDir::N),
+            Dir::S => Ok(ManhattanDir::S),
+            Dir::E => Ok(ManhattanDir::E),
+            Dir::W => Ok(ManhattanDir::W),
+            _ => Err(anyhow!("No equivalent"))
         }
     }
 }
