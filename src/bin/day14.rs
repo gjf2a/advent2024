@@ -20,7 +20,7 @@ fn main() -> anyhow::Result<()> {
         let dimensions = Position::from((width, height));
         match part {
             Part::One => part1(robots, dimensions),
-            Part::Two => part2(robots, dimensions),
+            Part::Two => visualize(robots, dimensions),
         }
         Ok(())
     })
@@ -112,6 +112,13 @@ fn visualize(mut robots: Vec<Robot>, dimensions: Position) {
                 'd' | 'r' | 'b' => {
                     seconds -= 1;
                     retreat_all_robots(&mut robots, dimensions);
+                }
+                'c' => {
+                    loop {
+                        seconds += 1;
+                        advance_all_robots(&mut robots, dimensions);
+                        if central_column_count(&robots, dimensions) > 10 {break;}
+                    }
                 }
                 'q' => break,
                 _ => {}
