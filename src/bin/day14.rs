@@ -4,7 +4,7 @@ use hash_histogram::HashHistogram;
 fn main() -> anyhow::Result<()> {
     advent_main(|filename, _part, _| {
         let mut robots = all_lines(filename)?.map(Robot::new).collect::<Vec<_>>();
-        let (width, height) = if filename.contains("ex") {(11, 7)} else {(103, 101)};
+        let (width, height) = if filename.contains("ex") {(11, 7)} else {(101, 103)};
         let dimensions = Position::from((width, height));
         for _ in 0..100 {
             for r in robots.iter_mut() {
