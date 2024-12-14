@@ -1,5 +1,5 @@
 use advent2024::{
-    advent_main, all_lines, extended_euclid::LinearDiophantinePositive, multidim::Position, Part,
+    advent_main, all_lines, multidim::Position, Part,
 };
 
 fn main() -> anyhow::Result<()> {
@@ -20,13 +20,11 @@ fn main() -> anyhow::Result<()> {
                     Part::One => inputs[2],
                     Part::Two => inputs[2] + Position::from((10000000000000, 10000000000000)),
                 };
-                println!("{a} {b} {goal}");
                 let cost = if options.contains(&"-brute") {
                     brute_force_tokens(inputs, 100)
                 } else {
                     cheapest(goal, a, b)
                 };
-                println!("cost: {cost:?}");
                 total += cost.unwrap_or(0);
                 inputs = vec![];
             }
