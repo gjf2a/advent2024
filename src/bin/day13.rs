@@ -1,6 +1,4 @@
-use advent2024::{
-    advent_main, all_lines, multidim::Position, Part,
-};
+use advent2024::{advent_main, all_lines, multidim::Position, Part};
 
 fn main() -> anyhow::Result<()> {
     advent_main(|filename, part, _| {
