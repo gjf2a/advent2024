@@ -57,15 +57,20 @@ fn brute_force_tokens(inputs: Vec<Position>, max_presses: isize) -> Option<isize
 }
 
 fn cheapest(goal: Position, a: Position, b: Position) -> Option<isize> {
-    let mut cheapest = None;
-    let options = LinearDiophantinePositive::new(a[0], b[0], goal[0]);
-    println!("options: {options:?}");
-    for (push_a, push_b) in options.filter(|(x, y)| a[1] * *x + b[1] * *y == goal[1]) {
-        let tokens = push_a * 3 + push_b;
-        println!("option: {push_a} {push_b} {tokens}");
-        if cheapest.map_or(true, |c| tokens < c) {
-            cheapest = Some(tokens);
-        }
+    // a[0] * x + b[0] * y = goal[0]
+    // a[1] * x + b[1] * y = goal[1]
+    //
+    // y = (goal[1] - a[1] * x) / b[1]
+    // a[0] * x + b[0] * ((goal[1] - a[1] * x) / b[1]) = goal[0]
+    // a[0] * b[1] * x + b[0] * goal[1] - b[0] * a[1] * x = b[1] * goal[0]
+    // a[0] * b[1] * x - b[0] * a[1] * x = b[1] * goal[0] - b[0] * goal[1]
+    // x = (b[1] * goal[0] - b[0] * goal[1]) / (a[0] * b[1] - b[0] * a[1])
+
+    let push_a = (b[1] * goal[0] - b[0] * goal[1]) / (a[0] * b[1] - b[0] * a[1]);
+    let push_b = (goal[1] - a[1] * push_a) / b[1];
+    if (0..2).all(|i| a[i] * push_a + b[i] * push_b == goal[i]) {
+        Some(push_a * 3 + push_b)
+    } else {
+        None
     }
-    cheapest
 }
