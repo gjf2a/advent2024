@@ -4,7 +4,7 @@ use std::{
     fmt::Display,
     iter::Sum,
     mem,
-    ops::{Add, AddAssign, Index, IndexMut, Mul, Neg, Sub, SubAssign},
+    ops::{Add, AddAssign, Index, IndexMut, Mul, Neg, Rem, RemAssign, Sub, SubAssign},
     str::FromStr,
 };
 
@@ -195,7 +195,7 @@ impl<N: NumType + Default + Neg<Output = N>, const S: usize> SubAssign for Point
 }
 
 impl<N: NumType + Default, const S: usize> Mul<N> for Point<N, S> {
-    type Output = Point<N, S>;
+    type Output = Self;
 
     fn mul(self, rhs: N) -> Self::Output {
         let mut result = self;
@@ -203,6 +203,42 @@ impl<N: NumType + Default, const S: usize> Mul<N> for Point<N, S> {
             result[i] *= rhs;
         }
         result
+    }
+}
+
+impl<N: NumType + Default, const S: usize> Rem<Point<N, S>> for Point<N, S> {
+    type Output = Point<N, S>;
+
+    fn rem(self, rhs: Self) -> Self::Output {
+        let mut result = self;
+        result %= rhs;
+        result
+    }
+}
+
+impl<N: NumType + Default, const S: usize> RemAssign<Point<N, S>> for Point<N, S> {
+    fn rem_assign(&mut self, rhs: Point<N, S>) {
+        for i in 0..S {
+            self[i] = self[i].mod_floor(&rhs[i]);
+        }
+    }
+}
+
+impl<N: NumType + Default, const S: usize> Rem<N> for Point<N, S> {
+    type Output = Point<N, S>;
+
+    fn rem(self, rhs: N) -> Self::Output {
+        let mut result = self;
+        result %= rhs;
+        result
+    }
+}
+
+impl<N: NumType + Default, const S: usize> RemAssign<N> for Point<N, S> {
+    fn rem_assign(&mut self, rhs: N) {
+        for i in 0..S {
+            self[i] = self[i].mod_floor(&rhs);
+        }
     }
 }
 
@@ -514,4 +550,33 @@ pub fn map_width_height<V>(map: &HashMap<Position, V>) -> (usize, usize) {
         (max[0] - min[0] + 1) as usize,
         (max[1] - min[1] + 1) as usize,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Position;
+
+    #[test]
+    fn test_point_math() {
+        let mut p1 = Position::from((2, 3));
+        assert_eq!(p1, Position::default() + p1);
+        let p2 = p1;
+        p1 += p1;
+        assert_eq!(p2 * 2, p1);
+        p1 -= p2;
+        assert_eq!(p1, p2);
+
+        let p3 = p2 * 4;
+        let p4 = p3 % 3;
+        assert_eq!(p4, Position::from((2, 0)));
+        let p4 = p3 % Position::from((5, 7));
+        assert_eq!(p4, Position::from((3, 5)));
+
+        let p5 = p4 - Position::from((5, 12));
+        assert_eq!(p5, Position::from((-2, -7)));
+        let p6 = p5 % 10;
+        assert_eq!(p6, Position::from((8, 3)));
+        let p7 = p5 % Position::from((10, 4));
+        assert_eq!(p7, Position::from((8, 1)));
+    }
 }
