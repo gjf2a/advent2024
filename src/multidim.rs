@@ -444,6 +444,10 @@ impl Dir {
         }
         result
     }
+
+    pub fn is_diagonal(&self) -> bool {
+        ManhattanDir::try_from(*self).is_err()
+    }
 }
 
 impl From<ManhattanDir> for Dir {
