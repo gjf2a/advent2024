@@ -12,7 +12,7 @@ fn main() -> anyhow::Result<()> {
                 .find_iter(line.as_str())
                 .map(|s| s.as_str().parse::<isize>().unwrap())
                 .collect::<Vec<_>>();
-            inputs.push(Position::new([nums[0], nums[1]]));
+            inputs.push(Position::from((nums[0], nums[1])));
             if inputs.len() == 3 {
                 let a = inputs[0];
                 let b = inputs[1];
