@@ -4,7 +4,7 @@ use std::{
     fmt::Display,
     iter::Sum,
     mem,
-    ops::{Add, AddAssign, Index, IndexMut, Mul, Neg, Rem, RemAssign, Sub, SubAssign},
+    ops::{Add, AddAssign, Div, Index, IndexMut, Mul, Neg, Rem, RemAssign, Sub, SubAssign},
     str::FromStr,
 };
 
@@ -201,6 +201,18 @@ impl<N: NumType + Default, const S: usize> Mul<N> for Point<N, S> {
         let mut result = self;
         for i in 0..S {
             result[i] *= rhs;
+        }
+        result
+    }
+}
+
+impl<N: NumType + Default, const S: usize> Div<N> for Point<N, S> {
+    type Output = Self;
+
+    fn div(self, rhs: N) -> Self::Output {
+        let mut result = self;
+        for i in 0..S {
+            result[i] /= rhs;
         }
         result
     }
