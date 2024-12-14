@@ -3,7 +3,7 @@ use advent2024::{
 };
 
 fn main() -> anyhow::Result<()> {
-    advent_main(|filename, part, options| {
+    advent_main(|filename, part, _| {
         let mut inputs = vec![];
         let mut total = 0;
         for line in all_lines(filename)?.filter(|line| line.len() > 0) {
@@ -20,12 +20,7 @@ fn main() -> anyhow::Result<()> {
                     Part::One => inputs[2],
                     Part::Two => inputs[2] + Position::from((10000000000000, 10000000000000)),
                 };
-                let cost = if options.contains(&"-brute") {
-                    brute_force_tokens(inputs, 100)
-                } else {
-                    cheapest(goal, a, b)
-                };
-                total += cost.unwrap_or(0);
+                total += cheapest(goal, a, b).unwrap_or(0);
                 inputs = vec![];
             }
         }
@@ -34,36 +29,8 @@ fn main() -> anyhow::Result<()> {
     })
 }
 
-fn brute_force_tokens(inputs: Vec<Position>, max_presses: isize) -> Option<isize> {
-    let button_a = inputs[0];
-    let button_b = inputs[1];
-    let goal = inputs[2];
-    let mut best = None;
-    for a in 0..max_presses {
-        for b in 0..max_presses {
-            let location = button_a * a + button_b * b;
-            if location == goal {
-                let tokens = a * 3 + b;
-                if best.map_or(true, |(b, _, _)| tokens < b) {
-                    best = Some((tokens, a, b));
-                }
-            }
-        }
-    }
-    println!("Winner: {best:?}");
-    best.map(|b| b.0)
-}
-
 fn cheapest(goal: Position, a: Position, b: Position) -> Option<isize> {
-    // a[0] * x + b[0] * y = goal[0]
-    // a[1] * x + b[1] * y = goal[1]
-    //
-    // y = (goal[1] - a[1] * x) / b[1]
-    // a[0] * x + b[0] * ((goal[1] - a[1] * x) / b[1]) = goal[0]
-    // a[0] * b[1] * x + b[0] * goal[1] - b[0] * a[1] * x = b[1] * goal[0]
-    // a[0] * b[1] * x - b[0] * a[1] * x = b[1] * goal[0] - b[0] * goal[1]
-    // x = (b[1] * goal[0] - b[0] * goal[1]) / (a[0] * b[1] - b[0] * a[1])
-
+    // Used the substitution method to solve a system of linear equations.
     let push_a = (b[1] * goal[0] - b[0] * goal[1]) / (a[0] * b[1] - b[0] * a[1]);
     let push_b = (goal[1] - a[1] * push_a) / b[1];
     if (0..2).all(|i| a[i] * push_a + b[i] * push_b == goal[i]) {
