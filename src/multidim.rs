@@ -466,7 +466,7 @@ impl TryFrom<Dir> for ManhattanDir {
             Dir::S => Ok(ManhattanDir::S),
             Dir::E => Ok(ManhattanDir::E),
             Dir::W => Ok(ManhattanDir::W),
-            _ => Err(anyhow!("No equivalent"))
+            _ => Err(anyhow!("No equivalent")),
         }
     }
 }
