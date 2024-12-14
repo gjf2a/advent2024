@@ -1,8 +1,8 @@
 pub mod combinations;
+pub mod extended_euclid;
 pub mod grid;
 pub mod multidim;
 pub mod searchers;
-pub mod extended_euclid;
 
 use std::{
     env,

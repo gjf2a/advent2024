@@ -1,6 +1,9 @@
-use std::{fmt::Display, ops::{AddAssign, SubAssign}};
-use trait_set::trait_set;
 use num::{Num, Signed};
+use std::{
+    fmt::Display,
+    ops::{AddAssign, SubAssign},
+};
+use trait_set::trait_set;
 
 trait_set! {
     pub trait EuclidNum = Num + Copy + Display + Signed + Ord + AddAssign + SubAssign;
@@ -35,7 +38,12 @@ impl<N: EuclidNum> LinearDiophantinePositive<N> {
             result
         } else {
             let neg = -N::one();
-            Self {x: neg, y: neg, co_x: neg, co_y: neg}
+            Self {
+                x: neg,
+                y: neg,
+                co_x: neg,
+                co_y: neg,
+            }
         }
     }
 
@@ -62,13 +70,17 @@ impl<N: EuclidNum> LinearDiophantinePositive<N> {
             }
         }
     }
+
+    pub fn live(&self) -> bool {
+        self.x >= N::zero() && self.y >= N::zero()
+    }
 }
 
 impl<N: EuclidNum> Iterator for LinearDiophantinePositive<N> {
     type Item = (N, N);
-    
+
     fn next(&mut self) -> Option<Self::Item> {
-        if self.x >= N::zero() && self.y >= N::zero() {
+        if self.live() {
             let result = (self.x, self.y);
             self.x += self.co_x;
             self.y += self.co_y;
