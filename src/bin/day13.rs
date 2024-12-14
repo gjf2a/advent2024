@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use advent2024::{advent_main, all_lines, extended_euclid::LinearDiophantinePositive, multidim::Position, Part};
 
 fn main() -> anyhow::Result<()> {
@@ -54,12 +52,9 @@ fn brute_force_tokens(inputs: Vec<Position>, max_presses: isize) -> Option<isize
 }
 
 fn cheapest(goal: Position, a: Position, b: Position) -> Option<isize> {
-    let xs = LinearDiophantinePositive::new(a[0], b[0], goal[0]).collect::<HashSet<_>>();
-    println!("xs? {}", xs.len());
-    let ys = LinearDiophantinePositive::new(a[1], b[1], goal[1]).collect::<HashSet<_>>();
     let mut cheapest = None;
-    for (push_a, push_b) in xs.intersection(&ys) {
-        let tokens = *push_a * 3 + *push_b;
+    for (push_a, push_b) in LinearDiophantinePositive::new(a[0], b[0], goal[0]).filter(|(x, y)| a[1] * *x + b[1] * *y == goal[1]) {
+        let tokens = push_a * 3 + push_b;
         if cheapest.map_or(true, |c| tokens < c) {
             cheapest = Some(tokens);
         }
