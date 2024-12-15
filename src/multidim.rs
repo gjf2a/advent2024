@@ -461,6 +461,20 @@ impl From<ManhattanDir> for Dir {
     }
 }
 
+impl TryFrom<char> for ManhattanDir {
+    type Error = anyhow::Error;
+
+    fn try_from(value: char) -> Result<Self, Self::Error> {
+        match value {
+            '^' | 'N' => Ok(ManhattanDir::N),
+            'v' | 'S' => Ok(ManhattanDir::S),
+            '>' | 'E' => Ok(ManhattanDir::E),
+            '<' | 'W' => Ok(ManhattanDir::W),
+            _ => Err(anyhow!("No equivalent")),
+        }
+    }
+}
+
 impl TryFrom<Dir> for ManhattanDir {
     type Error = anyhow::Error;
 
