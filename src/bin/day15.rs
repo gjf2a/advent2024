@@ -92,9 +92,8 @@ impl RobotWorld {
                     .collect::<Vec<_>>();
                 if ray.last().unwrap().1 == '.' {
                     for i in (0..(ray.len() - 1)).rev() {
-                        self.grid.update(ray[i + 1].0, ray[i].1);
+                        self.grid.swap(ray[i + 1].0, ray[i].0);
                     }
-                    self.grid.update(self.robot, '.');
                     self.robot = ray[1].0;
                 }
             } else {
@@ -115,13 +114,8 @@ impl RobotWorld {
 fn parse_moves(move_chars: &str) -> VecDeque<ManhattanDir> {
     move_chars
         .chars()
-        .map(|c| match c {
-            '^' => ManhattanDir::N,
-            'v' => ManhattanDir::S,
-            '<' => ManhattanDir::W,
-            '>' => ManhattanDir::E,
-            _ => panic!("Unrecognized: {c}"),
-        })
+        .map(ManhattanDir::try_from)
+        .map(|d| d.unwrap())
         .collect()
 }
 
