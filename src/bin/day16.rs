@@ -1,10 +1,9 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use advent2024::{
-    advent_main,
-    grid::GridCharWorld,
-    multidim::{DirType, ManhattanDir, Position}, Part,
+    advent_main, grid::GridCharWorld, multidim::{DirType, ManhattanDir, Position}, searchers::{breadth_first_search, ContinueSearch, SearchQueue}, Part
 };
+use multimap::MultiMap;
 use priority_queue::PriorityQueue;
 
 fn main() -> anyhow::Result<()> {
@@ -22,11 +21,13 @@ fn main() -> anyhow::Result<()> {
                 println!("{}", score);
             }
             Part::Two => {
-                let _ = table.by_ref().skip_while(|(_, s)| *s == score).next();
-                todo!("somehow backtrack")
+                while let Some(_) = table.next() {}
+                assert_eq!(table.num_empty_squares(), table.parents.keys().count());
+                let on_path = table.visited_towards_exit();
+                println!("{}", on_path.len());
             }
         }
-        
+
         Ok(())
     })
 }
@@ -35,27 +36,38 @@ struct ReindeerPathTable {
     candidates: PriorityQueue<Reindeer, isize>,
     maze: GridCharWorld,
     visited: HashMap<Reindeer, isize>,
+    parents: MultiMap<Position, Position>,
+    entrance: Position,
     exit: Position,
 }
 
 impl ReindeerPathTable {
     fn new(maze: GridCharWorld) -> Self {
         let mut candidates = PriorityQueue::new();
+        let entrance = maze.any_position_for('S');
         candidates.push(
             Reindeer {
-                p: maze.any_position_for('S'),
+                p: entrance,
                 f: ManhattanDir::E,
             },
             0,
         );
-        let visited = HashMap::new();
         let exit = maze.any_position_for('E');
         Self {
             maze,
             candidates,
-            visited,
+            visited: HashMap::new(),
+            parents: MultiMap::new(),
+            entrance,
             exit,
         }
+    }
+
+    fn num_empty_squares(&self) -> usize {
+        self.maze
+            .position_value_iter()
+            .filter(|(_, v)| **v != '#')
+            .count()
     }
 
     fn dequeue(&mut self) -> Option<(Reindeer, isize)> {
@@ -73,7 +85,22 @@ impl ReindeerPathTable {
                 }
             }
         }
+        result
+    }
 
+    fn visited_towards_exit(&self) -> HashSet<Position> {
+        let mut result = HashSet::new();
+        breadth_first_search(&self.exit, |s, q| {
+            result.insert(*s);
+            if *s == self.entrance {
+                ContinueSearch::No
+            } else {
+                for parent in self.parents.get_vec(s).unwrap() {
+                    q.enqueue(parent);
+                }
+                ContinueSearch::Yes
+            }
+        });
         result
     }
 }
@@ -83,10 +110,11 @@ impl Iterator for ReindeerPathTable {
 
     fn next(&mut self) -> Option<Self::Item> {
         let result = self.dequeue();
-        if let Some((r, s)) = result {
-            for (candidate, score) in r.futures(s) {
+        if let Some((parent, parent_score)) = result {
+            for (candidate, candidate_score) in parent.futures(parent_score) {
                 if self.maze.value(candidate.p).unwrap() != '#' {
-                    let new_priority = -score;
+                    self.parents.insert(candidate.p, parent.p);
+                    let new_priority = -candidate_score;
                     match self.candidates.get_priority(&candidate) {
                         None => {
                             self.candidates.push(candidate, new_priority);
