@@ -3,11 +3,12 @@ use std::collections::{HashMap, HashSet};
 use advent2024::{
     advent_main, grid::GridCharWorld, multidim::{DirType, ManhattanDir, Position}, searchers::{breadth_first_search, ContinueSearch, SearchQueue}, Part
 };
+use enum_iterator::all;
 use multimap::MultiMap;
 use priority_queue::PriorityQueue;
 
 fn main() -> anyhow::Result<()> {
-    advent_main(|filename, part, _| {
+    advent_main(|filename, part, options| {
         let mut table = ReindeerPathTable::new(GridCharWorld::from_char_file(filename)?);
         let exit = table.exit;
         let (winner, score) = table
@@ -24,6 +25,13 @@ fn main() -> anyhow::Result<()> {
                 while let Some(_) = table.next() {}
                 assert_eq!(table.num_empty_squares(), table.parents.keys().count());
                 let on_path = table.visited_towards_exit();
+                if options.contains(&"-show") {
+                    let mut maze = table.maze.clone();
+                    for p in on_path.iter() {
+                        maze.update(*p, 'O');
+                    }
+                    println!("{maze}");
+                }
                 println!("{}", on_path.len());
             }
         }
@@ -95,8 +103,24 @@ impl ReindeerPathTable {
             if *s == self.entrance {
                 ContinueSearch::No
             } else {
-                for parent in self.parents.get_vec(s).unwrap() {
-                    q.enqueue(parent);
+                let outgoing_dirs = all::<ManhattanDir>().filter(|d| result.contains(&d.neighbor(*s))).collect::<Vec<_>>();
+                let parents = self.parents.get_vec(s).unwrap();
+                let parent_costs = parents.iter().map(|p| {
+                    print!("s: {s} parent: {p}");
+                    let incoming_dir = ManhattanDir::dir_from_to(*p, *s).unwrap();
+                    let r = Reindeer {p: *p, f: incoming_dir};
+                    let mut c = *self.visited.get(&r).unwrap();
+                    if *s != self.exit && !outgoing_dirs.contains(&incoming_dir) {
+                        c += 1000;
+                    }
+                    println!(" ({c})");
+                    c
+                }).collect::<Vec<_>>();
+                let cheapest_parent = parent_costs.iter().min().unwrap();
+                for i in 0..parents.len() {
+                    if parent_costs[i] == *cheapest_parent {
+                        q.enqueue(&parents[i]);
+                    }
                 }
                 ContinueSearch::Yes
             }
@@ -113,7 +137,9 @@ impl Iterator for ReindeerPathTable {
         if let Some((parent, parent_score)) = result {
             for (candidate, candidate_score) in parent.futures(parent_score) {
                 if self.maze.value(candidate.p).unwrap() != '#' {
-                    self.parents.insert(candidate.p, parent.p);
+                    if candidate.p != parent.p {
+                        self.parents.insert(candidate.p, parent.p);
+                    }
                     let new_priority = -candidate_score;
                     match self.candidates.get_priority(&candidate) {
                         None => {
