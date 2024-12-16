@@ -10,7 +10,7 @@ use std::{
 
 use anyhow::anyhow;
 use bare_metal_modulo::NumType;
-use enum_iterator::{Sequence, all};
+use enum_iterator::{all, Sequence};
 
 use crate::all_lines;
 
@@ -604,7 +604,7 @@ pub fn map_width_height<V>(map: &HashMap<Position, V>) -> (usize, usize) {
 
 #[cfg(test)]
 mod tests {
-    use super::{Position, Dir, DirType};
+    use super::{Dir, DirType, Position};
     use enum_iterator::all;
 
     #[test]
