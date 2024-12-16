@@ -1,11 +1,14 @@
 use advent2024::{
     advent_main, all_lines,
     grid::GridCharWorld,
-    multidim::{DirType, ManhattanDir, Position}, Part,
+    multidim::{DirType, ManhattanDir, Position},
+    Part,
 };
-use itertools::Itertools;
-use std::{collections::VecDeque, fmt::Display};
 use anyhow::anyhow;
+use indexmap::IndexSet;
+use itertools::Itertools;
+use pancurses::{endwin, initscr, noecho, Input};
+use std::{collections::VecDeque, fmt::Display};
 
 fn main() -> anyhow::Result<()> {
     advent_main(|filename, part, options| {
@@ -13,8 +16,12 @@ fn main() -> anyhow::Result<()> {
         if options.contains(&"-show") {
             println!("{world}");
         }
-        while !world.done() {
-            world.advance();
+        if options.contains(&"-visualize") {
+            visualize(&mut world);
+        } else {
+            while !world.done() {
+                world.advance();
+            }
         }
         println!("{}", world.gps_sum());
         Ok(())
@@ -25,7 +32,7 @@ struct RobotWorld {
     grid: GridCharWorld,
     robot: Position,
     script: VecDeque<ManhattanDir>,
-    part: Part
+    part: Part,
 }
 
 impl Display for RobotWorld {
@@ -53,7 +60,7 @@ impl RobotWorld {
                                 '#' => "##",
                                 'O' => "[]",
                                 '@' => "@.",
-                                _ => return Err(anyhow!("Unrecognized char: {c}"))
+                                _ => return Err(anyhow!("Unrecognized char: {c}")),
                             };
                             wide_line.push_str(widened);
                         }
@@ -74,32 +81,8 @@ impl RobotWorld {
             grid,
             robot,
             script,
-            part
+            part,
         })
-    } 
-
-    fn done(&self) -> bool {
-        self.script.is_empty()
-    }
-
-    fn advance(&mut self) {
-        if let Some(dir) = self.script.pop_front() {
-            if self.part == Part::One || [ManhattanDir::E, ManhattanDir::W].contains(&dir) {
-                let ray = dir
-                    .iter_from(self.robot)
-                    .map(|p| (p, self.grid.value(p).unwrap()))
-                    .take_while_inclusive(|(_, c)| !".#".contains(*c))
-                    .collect::<Vec<_>>();
-                if ray.last().unwrap().1 == '.' {
-                    for i in (0..(ray.len() - 1)).rev() {
-                        self.grid.swap(ray[i + 1].0, ray[i].0);
-                    }
-                    self.robot = ray[1].0;
-                }
-            } else {
-                todo!("Handle the wide boxes")
-            }
-        }
     }
 
     fn gps_sum(&self) -> isize {
@@ -108,6 +91,93 @@ impl RobotWorld {
             .filter(|(_, v)| "O[".contains(**v))
             .map(|(p, _)| p[0] + 100 * p[1])
             .sum()
+    }
+
+    fn done(&self) -> bool {
+        self.script.is_empty()
+    }
+
+    fn advance(&mut self) {
+        if let Some(dir) = self.script.pop_front() {
+            if self.part == Part::One || [ManhattanDir::E, ManhattanDir::W].contains(&dir) {
+                self.advance_narrow(dir);
+            } else {
+                self.advance_wide(dir);
+            }
+        }
+    }
+
+    fn ray_iter(&self, dir: ManhattanDir) -> impl Iterator<Item = Position> + '_ {
+        dir.iter_from(self.robot)
+            .take_while_inclusive(|f| self.grid.value(*f).map_or(false, |c| !".#".contains(c)))
+    }
+
+    fn advance_narrow(&mut self, dir: ManhattanDir) {
+        let ray = self.ray_iter(dir).collect::<Vec<_>>();
+        if self.grid.value(*ray.last().unwrap()).unwrap() == '.' {
+            for i in (0..(ray.len() - 1)).rev() {
+                self.grid.swap(ray[i + 1], ray[i]);
+            }
+            self.robot = ray[1];
+        }
+    }
+
+    fn advance_wide(&mut self, dir: ManhattanDir) {
+        if let Some(move_points) = self.fan_ray(dir) {
+            println!("move_points: {move_points:?}");
+            for i in (0..move_points.len()).rev() {
+                for p in move_points[i].iter() {
+                    self.grid.swap(*p, dir.neighbor(*p));
+                    if i == 0 {
+                        assert_eq!(1, move_points[i].len());
+                        self.robot = dir.neighbor(*p);
+                    }
+                }
+            }
+        }
+    }
+
+    fn fan_ray(&self, dir: ManhattanDir) -> Option<Vec<IndexSet<Position>>> {
+        println!("robot at {} going {dir:?}", self.robot);
+        let mut start = IndexSet::new();
+        start.insert(self.robot);
+        let mut fringes = vec![start];
+        let mut all_space = false;
+        while !all_space {
+            all_space = true;
+            let last_fringe = fringes.last().unwrap();
+            let next_points = last_fringe
+                .iter()
+                .map(|p| dir.neighbor(*p))
+                .collect::<Vec<_>>();
+            println!("last: {last_fringe:?}");
+            println!("next: {next_points:?}");
+            let next_values = next_points
+                .iter()
+                .map(|p| self.grid.value(*p).unwrap())
+                .collect::<Vec<_>>();
+            println!("vals: {next_values:?}");
+            let mut fringe = IndexSet::new();
+            for i in 0..last_fringe.len() {
+                match next_values[i] {
+                    '#' => return None,
+                    '.' => {}
+                    '[' => {
+                        all_space = false;
+                        fringe.insert(next_points[i]);
+                        fringe.insert(ManhattanDir::E.neighbor(next_points[i]));
+                    }
+                    ']' => {
+                        all_space = false;
+                        fringe.insert(ManhattanDir::W.neighbor(next_points[i]));
+                        fringe.insert(next_points[i]);
+                    }
+                    _ => panic!("Unrecognized character: {}", next_values[i]),
+                }
+            }
+            fringes.push(fringe);
+        }
+        Some(fringes)
     }
 }
 
@@ -120,9 +190,31 @@ fn parse_moves(move_chars: &str) -> VecDeque<ManhattanDir> {
 }
 
 fn find_robot(grid: &GridCharWorld) -> Position {
-    grid
-    .position_value_iter()
-    .find(|(_, v)| **v == '@')
-    .map(|(p, _)| *p)
-    .unwrap()
+    grid.position_value_iter()
+        .find(|(_, v)| **v == '@')
+        .map(|(p, _)| *p)
+        .unwrap()
+}
+
+fn visualize(world: &mut RobotWorld) {
+    let window = initscr();
+    window.keypad(true);
+    noecho();
+
+    while !world.done() {
+        window.clear();
+        window.addstr(format!("Next move: {:?}\n", world.script[0]));
+        window.addstr(format!("{}", world.grid));
+        match window.getch() {
+            Some(Input::Character(c)) => match c {
+                ' ' => world.advance(),
+                'q' => break,
+                _ => {}
+            },
+            Some(Input::KeyDC) => break,
+            _ => (),
+        }
+    }
+
+    endwin();
 }
