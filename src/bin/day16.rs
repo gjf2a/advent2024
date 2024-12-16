@@ -67,7 +67,17 @@ impl Iterator for ReindeerPathTable {
         if let Some(r) = result {
             for candidate in r.futures() {
                 if self.maze.value(candidate.p).unwrap() != '#' {
-                    self.candidates.push(candidate, -candidate.score);
+                    match self.candidates.get_priority(&candidate) {
+                        None => {
+                            self.candidates.push(candidate, -candidate.score);
+                        }
+                        Some(priority) => {
+                            let new_priority = -candidate.score;
+                            if new_priority > *priority {
+                                self.candidates.change_priority(&candidate, new_priority);
+                            }
+                        }
+                    }
                 }
             }
         }
