@@ -62,7 +62,7 @@ impl RobotWorld {
         }
 
         let grid = grid_chars.parse::<GridCharWorld>()?;
-        let robot = find_robot(&grid);
+        let robot = grid.any_position_for('@');
         let script = parse_moves(move_chars.as_str());
         Ok(Self {
             grid,
@@ -184,13 +184,6 @@ fn parse_moves(move_chars: &str) -> VecDeque<ManhattanDir> {
         .map(ManhattanDir::try_from)
         .map(|d| d.unwrap())
         .collect()
-}
-
-fn find_robot(grid: &GridCharWorld) -> Position {
-    grid.position_value_iter()
-        .find(|(_, v)| **v == '@')
-        .map(|(p, _)| *p)
-        .unwrap()
 }
 
 fn visualize(world: &mut RobotWorld) {
