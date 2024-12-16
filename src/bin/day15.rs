@@ -93,14 +93,12 @@ impl RobotWorld {
             }
         }
     }
-
-    fn ray_iter(&self, dir: ManhattanDir) -> impl Iterator<Item = Position> + '_ {
-        dir.iter_from(self.robot)
-            .take_while_inclusive(|f| self.grid.value(*f).map_or(false, |c| !".#".contains(c)))
-    }
-
+    
     fn advance_narrow(&mut self, dir: ManhattanDir) {
-        let ray = self.ray_iter(dir).collect::<Vec<_>>();
+        let ray = dir
+            .iter_from(self.robot)
+            .take_while_inclusive(|f| self.grid.value(*f).map_or(false, |c| !".#".contains(c)))
+            .collect::<Vec<_>>();
         if self.grid.value(*ray.last().unwrap()).unwrap() == '.' {
             for i in (0..(ray.len() - 1)).rev() {
                 self.grid.swap(ray[i + 1], ray[i]);
@@ -196,7 +194,11 @@ fn visualize(world: &mut RobotWorld) {
         let message = if world.done() {
             "Finished".to_owned()
         } else {
-            format!("Next move: {:?} ({} left)\n", world.script[0], world.script.len())
+            format!(
+                "Next move: {:?} ({} left)\n",
+                world.script[0],
+                world.script.len()
+            )
         };
         window.addstr(message);
         window.addstr(format!("{}", world.grid));
