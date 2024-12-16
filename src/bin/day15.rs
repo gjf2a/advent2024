@@ -124,7 +124,6 @@ impl RobotWorld {
 
     fn advance_wide(&mut self, dir: ManhattanDir) {
         if let Some(move_points) = self.fan_ray(dir) {
-            println!("move_points: {move_points:?}");
             for i in (0..move_points.len()).rev() {
                 for p in move_points[i].iter() {
                     self.grid.swap(*p, dir.neighbor(*p));
@@ -138,7 +137,6 @@ impl RobotWorld {
     }
 
     fn fan_ray(&self, dir: ManhattanDir) -> Option<Vec<IndexSet<Position>>> {
-        println!("robot at {} going {dir:?}", self.robot);
         let mut start = IndexSet::new();
         start.insert(self.robot);
         let mut fringes = vec![start];
@@ -150,13 +148,10 @@ impl RobotWorld {
                 .iter()
                 .map(|p| dir.neighbor(*p))
                 .collect::<Vec<_>>();
-            println!("last: {last_fringe:?}");
-            println!("next: {next_points:?}");
             let next_values = next_points
                 .iter()
                 .map(|p| self.grid.value(*p).unwrap())
                 .collect::<Vec<_>>();
-            println!("vals: {next_values:?}");
             let mut fringe = IndexSet::new();
             for i in 0..last_fringe.len() {
                 match next_values[i] {
