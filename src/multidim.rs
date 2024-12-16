@@ -10,7 +10,7 @@ use std::{
 
 use anyhow::anyhow;
 use bare_metal_modulo::NumType;
-use enum_iterator::Sequence;
+use enum_iterator::{Sequence, all};
 
 use crate::all_lines;
 
@@ -287,7 +287,7 @@ where
     }
 }
 
-pub trait DirType: Copy {
+pub trait DirType: Copy + Sequence {
     fn offset(&self) -> Position;
 
     fn clockwise(&self) -> Self;
@@ -310,6 +310,11 @@ pub trait DirType: Copy {
 
     fn neighbor(&self, p: Position) -> Position {
         p + self.offset()
+    }
+
+    fn dir_from_to(start: Position, end: Position) -> Option<Self> {
+        let target_offset = end - start;
+        all::<Self>().find(|d| d.offset() == target_offset)
     }
 }
 
@@ -599,7 +604,8 @@ pub fn map_width_height<V>(map: &HashMap<Position, V>) -> (usize, usize) {
 
 #[cfg(test)]
 mod tests {
-    use super::Position;
+    use super::{Position, Dir, DirType};
+    use enum_iterator::all;
 
     #[test]
     fn test_point_math() {
@@ -623,5 +629,14 @@ mod tests {
         assert_eq!(p6, Position::from((8, 3)));
         let p7 = p5 % Position::from((10, 4));
         assert_eq!(p7, Position::from((8, 1)));
+    }
+
+    #[test]
+    fn test_dir_from_to() {
+        let p = Position::default();
+        for d in all::<Dir>() {
+            let q = d.neighbor(p);
+            assert_eq!(Some(d), Dir::dir_from_to(p, q));
+        }
     }
 }
