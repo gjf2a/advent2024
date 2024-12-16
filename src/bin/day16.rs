@@ -57,13 +57,7 @@ impl ReindeerPathTable {
     fn new(maze: GridCharWorld) -> Self {
         let mut candidates = PriorityQueue::new();
         let entrance = maze.any_position_for('S');
-        candidates.push(
-            Reindeer {
-                p: entrance,
-                f: ManhattanDir::E,
-            },
-            0,
-        );
+        candidates.push(Reindeer::new(entrance, ManhattanDir::E), 0);
         let exit = maze.any_position_for('E');
         Self {
             maze,
@@ -115,10 +109,7 @@ impl ReindeerPathTable {
                     .iter()
                     .map(|p| {
                         let incoming_dir = ManhattanDir::dir_from_to(*p, *s).unwrap();
-                        let r = Reindeer {
-                            p: *p,
-                            f: incoming_dir,
-                        };
+                        let r = Reindeer::new(*p, incoming_dir);
                         let mut c = *self.visited.get(&r).unwrap();
                         if *s != self.exit && !outgoing_dirs.contains(&incoming_dir) {
                             c += 1000;
@@ -175,29 +166,23 @@ struct Reindeer {
 }
 
 impl Reindeer {
+    fn new(p: Position, f: ManhattanDir) -> Self {
+        Self { p, f }
+    }
+
+    fn with_facing(&self, f: ManhattanDir) -> Self {
+        Self::new(self.p, f)
+    }
+
+    fn with_position(&self, p: Position) -> Self {
+        Self::new(p, self.f)
+    }
+
     fn futures(&self, score: isize) -> Vec<(Reindeer, isize)> {
         vec![
-            (
-                Self {
-                    p: self.f.neighbor(self.p),
-                    f: self.f,
-                },
-                score + 1,
-            ),
-            (
-                Self {
-                    p: self.p,
-                    f: self.f.clockwise(),
-                },
-                score + 1000,
-            ),
-            (
-                Self {
-                    p: self.p,
-                    f: self.f.counterclockwise(),
-                },
-                score + 1000,
-            ),
+            (self.with_position(self.f.neighbor(self.p)), score + 1),
+            (self.with_facing(self.f.clockwise()), score + 1000),
+            (self.with_facing(self.f.counterclockwise()), score + 1000),
         ]
     }
 }
