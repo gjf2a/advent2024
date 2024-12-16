@@ -1,14 +1,14 @@
-use std::collections::HashSet;
+use std::collections::HashMap;
 
 use advent2024::{
     advent_main,
     grid::GridCharWorld,
-    multidim::{DirType, ManhattanDir, Position},
+    multidim::{DirType, ManhattanDir, Position}, Part,
 };
 use priority_queue::PriorityQueue;
 
 fn main() -> anyhow::Result<()> {
-    advent_main(|filename, _part, _| {
+    advent_main(|filename, part, _| {
         let mut table = ReindeerPathTable::new(GridCharWorld::from_char_file(filename)?);
         let exit = table.exit;
         let (winner, score) = table
@@ -17,7 +17,16 @@ fn main() -> anyhow::Result<()> {
             .next()
             .unwrap();
         assert_eq!(winner.p, exit);
-        println!("{}", score);
+        match part {
+            Part::One => {
+                println!("{}", score);
+            }
+            Part::Two => {
+                let _ = table.by_ref().skip_while(|(_, s)| *s == score).next();
+                todo!("somehow backtrack")
+            }
+        }
+        
         Ok(())
     })
 }
@@ -25,7 +34,7 @@ fn main() -> anyhow::Result<()> {
 struct ReindeerPathTable {
     candidates: PriorityQueue<Reindeer, isize>,
     maze: GridCharWorld,
-    visited: HashSet<Reindeer>,
+    visited: HashMap<Reindeer, isize>,
     exit: Position,
 }
 
@@ -39,7 +48,7 @@ impl ReindeerPathTable {
             },
             0,
         );
-        let visited = HashSet::new();
+        let visited = HashMap::new();
         let exit = maze.any_position_for('E');
         Self {
             maze,
@@ -55,9 +64,10 @@ impl ReindeerPathTable {
             match self.candidates.pop() {
                 None => return None,
                 Some((r, score)) => {
-                    if !self.visited.contains(&r) {
-                        self.visited.insert(r);
-                        result = Some((r, -score));
+                    let score = -score;
+                    if !self.visited.contains_key(&r) {
+                        self.visited.insert(r, score);
+                        result = Some((r, score));
                         break;
                     }
                 }
