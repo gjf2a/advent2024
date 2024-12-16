@@ -11,37 +11,43 @@ use enum_iterator::all;
 use multimap::MultiMap;
 use priority_queue::PriorityQueue;
 
+const MOVE_COST: isize = 1;
+const TURN_COST: isize = 1000;
+
 fn main() -> anyhow::Result<()> {
     advent_main(|filename, part, options| {
-        let mut table = ReindeerPathTable::new(GridCharWorld::from_char_file(filename)?);
-        let exit = table.exit;
-        let (winner, score) = table
+        let table = ReindeerPathTable::new(GridCharWorld::from_char_file(filename)?);
+        match part {
+            Part::One => part1(table),
+            Part::Two => part2(table, options.contains(&"-show")),
+        }
+        Ok(())
+    })
+}
+
+fn part1(mut table: ReindeerPathTable) {
+    let exit = table.exit;
+    let (winner, score) = table
             .by_ref()
             .skip_while(|(r, _)| r.p != exit)
             .next()
             .unwrap();
-        assert_eq!(winner.p, exit);
-        match part {
-            Part::One => {
-                println!("{}", score);
-            }
-            Part::Two => {
-                while let Some(_) = table.next() {}
-                assert_eq!(table.num_empty_squares(), table.parents.keys().count());
-                let on_path = table.visited_towards_exit();
-                if options.contains(&"-show") {
-                    let mut maze = table.maze.clone();
-                    for p in on_path.iter() {
-                        maze.update(*p, 'O');
-                    }
-                    println!("{maze}");
-                }
-                println!("{}", on_path.len());
-            }
-        }
+    assert_eq!(winner.p, exit);
+    println!("{}", score);
+}
 
-        Ok(())
-    })
+fn part2(mut table: ReindeerPathTable, show: bool) {
+    while let Some(_) = table.next() {}
+    assert_eq!(table.num_empty_squares(), table.parents.keys().count());
+    let on_path = table.visited_towards_exit();
+    if show {
+        let mut maze = table.maze.clone();
+        for p in on_path.iter() {
+            maze.update(*p, 'O');
+        }
+        println!("{maze}");
+    }
+    println!("{}", on_path.len());
 }
 
 struct ReindeerPathTable {
@@ -112,7 +118,7 @@ impl ReindeerPathTable {
                         let r = Reindeer::new(*p, incoming_dir);
                         let mut c = *self.visited.get(&r).unwrap();
                         if *s != self.exit && !outgoing_dirs.contains(&incoming_dir) {
-                            c += 1000;
+                            c += TURN_COST;
                         }
                         c
                     })
@@ -180,9 +186,9 @@ impl Reindeer {
 
     fn futures(&self, score: isize) -> Vec<(Reindeer, isize)> {
         vec![
-            (self.with_position(self.f.neighbor(self.p)), score + 1),
-            (self.with_facing(self.f.clockwise()), score + 1000),
-            (self.with_facing(self.f.counterclockwise()), score + 1000),
+            (self.with_position(self.f.neighbor(self.p)), score + MOVE_COST),
+            (self.with_facing(self.f.clockwise()), score + TURN_COST),
+            (self.with_facing(self.f.counterclockwise()), score + TURN_COST),
         ]
     }
 }
