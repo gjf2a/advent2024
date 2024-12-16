@@ -1,4 +1,4 @@
-use std::collections::{BinaryHeap, HashSet};
+use std::collections::HashSet;
 
 use advent2024::{
     advent_main,
@@ -8,9 +8,11 @@ use advent2024::{
 use priority_queue::PriorityQueue;
 
 fn main() -> anyhow::Result<()> {
-    advent_main(|filename, part, _| {
-        let maze = GridCharWorld::from_char_file(filename)?;
-
+    advent_main(|filename, _part, _| {
+        let mut table = ReindeerPathTable::new(GridCharWorld::from_char_file(filename)?);
+        let exit = table.exit;
+        let winner = table.by_ref().skip_while(|r| r.p != exit).next().unwrap();
+        println!("{}", winner.score);
         Ok(())
     })
 }
@@ -19,6 +21,7 @@ struct ReindeerPathTable {
     candidates: PriorityQueue<Reindeer, isize>,
     maze: GridCharWorld,
     visited: HashSet<Reindeer>,
+    exit: Position
 }
 
 impl ReindeerPathTable {
@@ -33,7 +36,8 @@ impl ReindeerPathTable {
             0,
         );
         let visited = HashSet::new();
-        Self { maze, candidates, visited }
+        let exit = maze.any_position_for('E');
+        Self { maze, candidates, visited, exit }
     }
 
     fn dequeue(&mut self) -> Option<Reindeer> {
@@ -62,7 +66,9 @@ impl Iterator for ReindeerPathTable {
         let result = self.dequeue();
         if let Some(r) = result {
             for candidate in r.futures() {
-                
+                if self.maze.value(candidate.p).unwrap() != '#' {
+                    self.candidates.push(candidate, -candidate.score);
+                }
             }
         }
         result
