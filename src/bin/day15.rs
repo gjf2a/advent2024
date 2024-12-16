@@ -52,20 +52,7 @@ impl RobotWorld {
             } else if in_grid {
                 let line = match part {
                     Part::One => line,
-                    Part::Two => {
-                        let mut wide_line = String::new();
-                        for c in line.chars() {
-                            let widened = match c {
-                                '.' => "..",
-                                '#' => "##",
-                                'O' => "[]",
-                                '@' => "@.",
-                                _ => return Err(anyhow!("Unrecognized char: {c}")),
-                            };
-                            wide_line.push_str(widened);
-                        }
-                        wide_line
-                    }
+                    Part::Two => widened_line(line.as_str())?,
                 };
                 grid_chars.push_str(line.as_str());
                 grid_chars.push('\n');
@@ -153,7 +140,7 @@ impl RobotWorld {
                 .map(|p| self.grid.value(*p).unwrap())
                 .collect::<Vec<_>>();
             let mut fringe = IndexSet::new();
-            for i in 0..last_fringe.len() {
+            for i in 0..next_values.len() {
                 match next_values[i] {
                     '#' => return None,
                     '.' => {}
@@ -176,6 +163,21 @@ impl RobotWorld {
     }
 }
 
+fn widened_line(line: &str) -> anyhow::Result<String> {
+    let mut wide_line = String::new();
+    for c in line.chars() {
+        let widened = match c {
+            '.' => "..",
+            '#' => "##",
+            'O' => "[]",
+            '@' => "@.",
+            _ => return Err(anyhow!("Unrecognized char: {c}")),
+        };
+        wide_line.push_str(widened);
+    }
+    Ok(wide_line)
+}
+
 fn parse_moves(move_chars: &str) -> VecDeque<ManhattanDir> {
     move_chars
         .chars()
@@ -196,9 +198,14 @@ fn visualize(world: &mut RobotWorld) {
     window.keypad(true);
     noecho();
 
-    while !world.done() {
+    loop {
         window.clear();
-        window.addstr(format!("Next move: {:?}\n", world.script[0]));
+        let message = if world.done() {
+            "Finished".to_owned()
+        } else {
+            format!("Next move: {:?} ({} left)\n", world.script[0], world.script.len())
+        };
+        window.addstr(message);
         window.addstr(format!("{}", world.grid));
         match window.getch() {
             Some(Input::Character(c)) => match c {
