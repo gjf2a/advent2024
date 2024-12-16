@@ -1,7 +1,11 @@
 use std::collections::{HashMap, HashSet};
 
 use advent2024::{
-    advent_main, grid::GridCharWorld, multidim::{DirType, ManhattanDir, Position}, searchers::{breadth_first_search, ContinueSearch, SearchQueue}, Part
+    advent_main,
+    grid::GridCharWorld,
+    multidim::{DirType, ManhattanDir, Position},
+    searchers::{breadth_first_search, ContinueSearch, SearchQueue},
+    Part,
 };
 use enum_iterator::all;
 use multimap::MultiMap;
@@ -103,19 +107,25 @@ impl ReindeerPathTable {
             if *s == self.entrance {
                 ContinueSearch::No
             } else {
-                let outgoing_dirs = all::<ManhattanDir>().filter(|d| result.contains(&d.neighbor(*s))).collect::<Vec<_>>();
+                let outgoing_dirs = all::<ManhattanDir>()
+                    .filter(|d| result.contains(&d.neighbor(*s)))
+                    .collect::<Vec<_>>();
                 let parents = self.parents.get_vec(s).unwrap();
-                let parent_costs = parents.iter().map(|p| {
-                    print!("s: {s} parent: {p}");
-                    let incoming_dir = ManhattanDir::dir_from_to(*p, *s).unwrap();
-                    let r = Reindeer {p: *p, f: incoming_dir};
-                    let mut c = *self.visited.get(&r).unwrap();
-                    if *s != self.exit && !outgoing_dirs.contains(&incoming_dir) {
-                        c += 1000;
-                    }
-                    println!(" ({c})");
-                    c
-                }).collect::<Vec<_>>();
+                let parent_costs = parents
+                    .iter()
+                    .map(|p| {
+                        let incoming_dir = ManhattanDir::dir_from_to(*p, *s).unwrap();
+                        let r = Reindeer {
+                            p: *p,
+                            f: incoming_dir,
+                        };
+                        let mut c = *self.visited.get(&r).unwrap();
+                        if *s != self.exit && !outgoing_dirs.contains(&incoming_dir) {
+                            c += 1000;
+                        }
+                        c
+                    })
+                    .collect::<Vec<_>>();
                 let cheapest_parent = parent_costs.iter().min().unwrap();
                 for i in 0..parents.len() {
                     if parent_costs[i] == *cheapest_parent {
