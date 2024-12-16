@@ -93,7 +93,7 @@ impl RobotWorld {
             }
         }
     }
-    
+
     fn advance_narrow(&mut self, dir: ManhattanDir) {
         let ray = dir
             .iter_from(self.robot)
