@@ -3,9 +3,9 @@ use num::Integer;
 
 fn main() -> anyhow::Result<()> {
     advent_main(|filename, part, _| {
-        let program = Program::new(filename)?;
         match part {
             Part::One => {
+                let program = Program::new(filename)?;
                 let outputs = program.map(|n| n.to_string()).collect::<Vec<_>>();
                 println!("{}", outputs.join(","));
             }
@@ -53,8 +53,8 @@ impl Program {
             4 => self.a,
             5 => self.b,
             6 => self.c,
-            _ => panic!("Undefined op: {op}")
-        } 
+            _ => panic!("Undefined op: {op}"),
+        }
     }
 
     fn div(&self, op: i64) -> i64 {
@@ -64,34 +64,31 @@ impl Program {
     fn execute_one_instr(&mut self) -> Option<u8> {
         assert!(!self.finished());
         let operand = self.program[self.pc + 1];
-        if self.program[self.pc] == 5 {
-            let output = Some(self.combo(operand).mod_floor(&8) as u8);
-            self.pc += 2;
-            output 
-        } else {
-            if self.program[self.pc] == 3 && self.a != 0 {
-                self.pc = operand as usize;
-            } else {
-                match self.program[self.pc] {
-                    0 => self.a = self.div(self.combo(operand)),
-                    1 => self.b = self.b ^ operand as i64,
-                    2 => self.b = self.combo(operand).mod_floor(&8),
-                    3 => {}
-                    4 => self.b = self.b ^ self.c,
-                    6 => self.b = self.div(self.combo(operand)),
-                    7 => self.c = self.div(self.combo(operand)),
-                    _ => panic!("unrecognized instruction: {}", self.program[self.pc])
+        let mut pc = self.pc + 2;
+        let mut output = None;
+        match self.program[self.pc] {
+            0 => self.a = self.div(self.combo(operand)),
+            1 => self.b = self.b ^ operand as i64,
+            2 => self.b = self.combo(operand).mod_floor(&8),
+            3 => {
+                if self.a != 0 {
+                    pc = operand as usize;
                 }
-                self.pc += 2;
             }
-            None
+            4 => self.b = self.b ^ self.c,
+            5 => output = Some(self.combo(operand).mod_floor(&8) as u8),
+            6 => self.b = self.div(self.combo(operand)),
+            7 => self.c = self.div(self.combo(operand)),
+            _ => panic!("unrecognized instruction: {}", self.program[self.pc]),
         }
+        self.pc = pc;
+        output
     }
 }
 
 impl Iterator for Program {
     type Item = u8;
-    
+
     fn next(&mut self) -> Option<Self::Item> {
         while !self.finished() {
             if let Some(output) = self.execute_one_instr() {
