@@ -28,10 +28,10 @@ fn main() -> anyhow::Result<()> {
 fn part1(mut table: ReindeerPathTable) {
     let exit = table.exit;
     let (winner, score) = table
-            .by_ref()
-            .skip_while(|(r, _)| r.p != exit)
-            .next()
-            .unwrap();
+        .by_ref()
+        .skip_while(|(r, _)| r.p != exit)
+        .next()
+        .unwrap();
     assert_eq!(winner.p, exit);
     println!("{}", score);
 }
@@ -186,9 +186,15 @@ impl Reindeer {
 
     fn futures(&self, score: isize) -> Vec<(Reindeer, isize)> {
         vec![
-            (self.with_position(self.f.neighbor(self.p)), score + MOVE_COST),
+            (
+                self.with_position(self.f.neighbor(self.p)),
+                score + MOVE_COST,
+            ),
             (self.with_facing(self.f.clockwise()), score + TURN_COST),
-            (self.with_facing(self.f.counterclockwise()), score + TURN_COST),
+            (
+                self.with_facing(self.f.counterclockwise()),
+                score + TURN_COST,
+            ),
         ]
     }
 }
