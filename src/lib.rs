@@ -5,12 +5,10 @@ pub mod multidim;
 pub mod searchers;
 
 use std::{
-    env,
-    fs::{self, File},
-    io::{self, BufRead, BufReader, Lines},
-    str::FromStr,
-    time::Instant,
+    env, fs::{self, File}, io::{self, BufRead, BufReader, Lines}, ops::{AddAssign, DivAssign}, str::FromStr, time::Instant
 };
+
+use num::Integer;
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub enum Part {
@@ -56,6 +54,15 @@ pub fn all_lines_wrap(filename: &str) -> io::Result<Lines<BufReader<File>>> {
 
 pub fn all_lines(filename: &str) -> io::Result<impl Iterator<Item = String>> {
     Ok(all_lines_wrap(filename)?.map(|line| line.unwrap()))
+}
+
+pub fn log<N: Integer + Copy + DivAssign + AddAssign>(mut num: N, base: N) -> N {
+    let mut result = N::zero();
+    while num >= base {
+        num /= base;
+        result += N::one();
+    }
+    result
 }
 
 #[cfg(test)]
