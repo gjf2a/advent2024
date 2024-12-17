@@ -1,3 +1,5 @@
 /target
 /in
 Cargo.lock
+input.txt
+day17notes.txt
