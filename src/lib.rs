@@ -8,7 +8,7 @@ use std::{
     env, fs::{self, File}, io::{self, BufRead, BufReader, Lines}, ops::{AddAssign, DivAssign}, str::FromStr, time::Instant
 };
 
-use num::Integer;
+use num::{pow::Pow, Integer};
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub enum Part {
@@ -56,22 +56,32 @@ pub fn all_lines(filename: &str) -> io::Result<impl Iterator<Item = String>> {
     Ok(all_lines_wrap(filename)?.map(|line| line.unwrap()))
 }
 
-pub fn log<N: Integer + Copy + DivAssign + AddAssign>(mut num: N, base: N) -> N {
+pub fn log_floor<N: Integer + Copy + DivAssign + AddAssign>(mut num: N, base: N) -> N {
     let mut result = N::zero();
-    while num >= base {
+    while num > N::one() {
         num /= base;
         result += N::one();
     }
     result
 }
 
+/* 
+pub fn log_ceiling<P: Integer, N: Integer + Copy + DivAssign + AddAssign + Pow<P>>(num: N, base: N) -> N {
+    let lf = log_floor(num, base);
+    if num > base.pow(lf) {
+        lf + N::one()
+    } else {
+        lf
+    }
+}
+*/
+
 #[cfg(test)]
 mod tests {
     use enum_iterator::all;
 
     use crate::{
-        multidim::{Dir, DirType, ManhattanDir, Position, RowMajorPositionIterator},
-        searchers::{breadth_first_search, AdjacencySets, ContinueSearch, SearchQueue},
+        log_floor, multidim::{Dir, DirType, ManhattanDir, Position, RowMajorPositionIterator}, searchers::{breadth_first_search, AdjacencySets, ContinueSearch, SearchQueue}
     };
 
     #[test]
@@ -203,5 +213,19 @@ mod tests {
         let path = parent_map.path_back_from(&"end".to_string()).unwrap();
         let path_str = format!("{:?}", path);
         assert_eq!(path_str, r#"["start", "A", "end"]"#);
+    }
+
+    #[test]
+    fn test_log_floor() {
+        for (n, l) in [(1, 0), (2, 1), (3, 1), (4, 2), (5, 2), (6, 2), (7, 2), (8, 3)] {
+            assert_eq!(log_floor(n, 2), l);
+        }
+    }
+
+    #[test]
+    fn test_log_ceiling() {
+        for (n, l) in [(1, 0), (2, 1), (3, 2), (4, 2), (5, 3), (6, 3), (7, 3), (8, 3), (9, 4)] {
+            //assert_eq!(log_ceiling(n, 2), l);
+        }
     }
 }
