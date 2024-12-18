@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, VecDeque};
 
 use advent2024::{advent_main, all_lines, Part};
 use num::Integer;
@@ -29,21 +29,10 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn part2(program: Program) {
-    let mut output2a = HashMap::new();
-    for a3 in 0..8 {
-        let mut program = program.with_a(a3);
-        let output = program.next().unwrap();
-        output2a.insert(output, a3 as u64);
-    }    
-
-    let mut initial_a = 0;
-    for inst in program.program.iter().rev() {
-        initial_a += output2a.get(inst).unwrap();
-    }
-
-    println!("{initial_a}");
-    let outputs = program.with_a(initial_a).collect::<Vec<_>>();
+    let a_start = RegisterAFinder::new(&program).last().unwrap();
+    let outputs = program.with_a(a_start).collect::<Vec<_>>();
     assert_eq!(outputs, program.program);
+    println!("{a_start}");
 }
 
 #[derive(Debug, Clone)]
@@ -184,4 +173,47 @@ fn nums_from_end(s: String) -> Vec<u8> {
         .split(",")
         .map(|ns| ns.parse::<u8>().unwrap())
         .collect()
+}
+
+struct RegisterAFinder {
+    table: BTreeMap<Vec<u8>, u64>,
+    pending: VecDeque<u8>,
+    incremental_a: Option<u64>,
+}
+
+impl RegisterAFinder {
+    fn new(program: &Program) -> Self {
+        let mut table = BTreeMap::new();
+        for potential_a in 0..(2_u64.pow(24)) {
+            let outputs = program.with_a(potential_a).collect::<Vec<_>>();
+            if !table.contains_key(&outputs) {
+                if outputs.len() <= 2 {
+                println!("{outputs:?}");}
+                table.insert(outputs, potential_a);
+            }
+        }
+        let pending = program.program.iter().copied().collect();
+        let incremental_a = Some(0);
+        Self {table, pending, incremental_a}
+    }
+}
+
+impl Iterator for RegisterAFinder {
+    type Item = u64;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let result = self.incremental_a;
+        self.incremental_a = match self.pending.pop_front() {
+            None => None,
+            Some(front) => {
+                let mut pending_key = vec![front];
+                while !self.table.contains_key(&pending_key) {
+                    println!("pending_key: {pending_key:?} pending: {:?}", self.pending);
+                    pending_key.push(self.pending.pop_front().unwrap());
+                }
+                self.table.get(&pending_key).copied()
+            }
+        };
+        result
+    }
 }
