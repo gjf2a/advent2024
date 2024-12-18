@@ -8,7 +8,7 @@ use std::{
     env, fs::{self, File}, io::{self, BufRead, BufReader, Lines}, ops::{AddAssign, DivAssign}, str::FromStr, time::Instant
 };
 
-use num::{pow::Pow, Integer};
+use num::Integer;
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub enum Part {
