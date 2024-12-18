@@ -5,7 +5,12 @@ pub mod multidim;
 pub mod searchers;
 
 use std::{
-    env, fs::{self, File}, io::{self, BufRead, BufReader, Lines}, ops::{AddAssign, DivAssign}, str::FromStr, time::Instant
+    env,
+    fs::{self, File},
+    io::{self, BufRead, BufReader, Lines},
+    ops::{AddAssign, DivAssign},
+    str::FromStr,
+    time::Instant,
 };
 
 use num::Integer;
@@ -65,7 +70,7 @@ pub fn log_floor<N: Integer + Copy + DivAssign + AddAssign>(mut num: N, base: N)
     result
 }
 
-/* 
+/*
 pub fn log_ceiling<P: Integer, N: Integer + Copy + DivAssign + AddAssign + Pow<P>>(num: N, base: N) -> N {
     let lf = log_floor(num, base);
     if num > base.pow(lf) {
@@ -81,7 +86,9 @@ mod tests {
     use enum_iterator::all;
 
     use crate::{
-        log_floor, multidim::{Dir, DirType, ManhattanDir, Position, RowMajorPositionIterator}, searchers::{breadth_first_search, AdjacencySets, ContinueSearch, SearchQueue}
+        log_floor,
+        multidim::{Dir, DirType, ManhattanDir, Position, RowMajorPositionIterator},
+        searchers::{breadth_first_search, AdjacencySets, ContinueSearch, SearchQueue},
     };
 
     #[test]
@@ -217,7 +224,16 @@ mod tests {
 
     #[test]
     fn test_log_floor() {
-        for (n, l) in [(1, 0), (2, 1), (3, 1), (4, 2), (5, 2), (6, 2), (7, 2), (8, 3)] {
+        for (n, l) in [
+            (1, 0),
+            (2, 1),
+            (3, 1),
+            (4, 2),
+            (5, 2),
+            (6, 2),
+            (7, 2),
+            (8, 3),
+        ] {
             assert_eq!(log_floor(n, 2), l);
         }
     }
@@ -225,7 +241,7 @@ mod tests {
     #[test]
     fn test_log_ceiling() {
         //for (n, l) in [(1, 0), (2, 1), (3, 2), (4, 2), (5, 3), (6, 3), (7, 3), (8, 3), (9, 4)] {
-            //assert_eq!(log_ceiling(n, 2), l);
+        //assert_eq!(log_ceiling(n, 2), l);
         //}
     }
 }

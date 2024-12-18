@@ -169,20 +169,20 @@ impl RegisterAFinder {
             current_a: Some(0),
             program: program.clone(),
             past_target: program.program.len() - 1,
-            target_a_options: vec![(0..8).filter(|a| program.with_a(*a).next().unwrap() as u64 == 0).collect()]
+            target_a_options: vec![(0..8)
+                .filter(|a| program.with_a(*a).next().unwrap() as u64 == 0)
+                .collect()],
         }
     }
 
-    fn find_updated_a(&self) -> BTreeSet<u64> {
+    fn updated_a_options(&self) -> BTreeSet<u64> {
         let prev_as = self.target_a_options.last().unwrap();
-        println!("prev_as: {prev_as:?}");
         let mut result = BTreeSet::new();
         for prev_a in prev_as.iter() {
             let a = prev_a * 8;
             for a_addition in 0..8 {
                 let updated_a = a + a_addition;
                 let outputs = self.program.with_a(updated_a).collect::<Vec<_>>();
-                println!("a_addition: {a_addition} outputs: {outputs:?} goal: {:?}", &self.program.program[self.past_target..]);
                 if &outputs[..] == &self.program.program[self.past_target..] {
                     result.insert(updated_a);
                 }
@@ -199,15 +199,9 @@ impl Iterator for RegisterAFinder {
         let result = self.current_a;
         self.current_a = if self.past_target > 0 {
             self.past_target -= 1;
-            let updated_a = self.find_updated_a();
-            let min_a = updated_a.iter().next().copied().unwrap();
-            println!(
-                "{} {:?} {:?}",
-                self.past_target,
-                updated_a,
-                self.program.with_a(min_a).collect::<Vec<_>>()
-            );
-            self.target_a_options.push(updated_a);
+            let a_options = self.updated_a_options();
+            let min_a = a_options.iter().next().copied().unwrap();
+            self.target_a_options.push(a_options);
             Some(min_a)
         } else {
             None
