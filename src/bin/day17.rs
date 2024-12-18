@@ -13,17 +13,8 @@ fn main() -> anyhow::Result<()> {
                 }
                 let outputs = program.by_ref().map(|n| n.to_string()).collect::<Vec<_>>();
                 println!("{}", outputs.join(","));
-                if options.contains(&"-numinst") {
-                    println!("Executed {} instructions", program.instructions_executed);
-                }
             }
-            Part::Two => {
-                if options.contains(&"-mina") {
-                    lowest_a_for_each(&program);
-                } else {
-                    part2(program);
-                }
-            }
+            Part::Two => part2(program),
         }
         Ok(())
     })
@@ -43,24 +34,17 @@ struct Program {
     c: u64,
     pc: usize,
     program: Vec<u8>,
-    instructions_executed: usize,
 }
 
 impl Program {
     fn new(filename: &str) -> anyhow::Result<Self> {
         let mut lines = all_lines(filename)?;
-        let a = num_from_end(lines.next().unwrap())?;
-        let b = num_from_end(lines.next().unwrap())?;
-        let c = num_from_end(lines.next().unwrap())?;
-        let program = nums_from_end(lines.skip(1).next().unwrap());
-
         Ok(Self {
-            a,
-            b,
-            c,
+            a: num_from_end(lines.next().unwrap())?,
+            b: num_from_end(lines.next().unwrap())?,
+            c: num_from_end(lines.next().unwrap())?,
             pc: 0,
-            program,
-            instructions_executed: 0,
+            program: nums_from_end(lines.skip(1).next().unwrap()),
         })
     }
 
@@ -109,20 +93,22 @@ impl Program {
             _ => panic!("unrecognized instruction: {}", self.program[self.pc]),
         }
         self.pc = pc;
-        self.instructions_executed += 1;
         output
     }
 
     fn print_program_listing(&self) {
         for i in (0..self.program.len()).step_by(2) {
             let literal = format!("{}", self.program[i + 1]);
-            let combo = format!("{}", match self.program[i + 1] {
-                0..=3 => char::from_digit(self.program[i + 1] as u32, 10).unwrap(),
-                4 => 'a',
-                5 => 'b',
-                6 => 'c',
-                _ => panic!("Unrecognized"),
-            });
+            let combo = format!(
+                "{}",
+                match self.program[i + 1] {
+                    0..=3 => char::from_digit(self.program[i + 1] as u32, 10).unwrap(),
+                    4 => 'a',
+                    5 => 'b',
+                    6 => 'c',
+                    _ => panic!("Unrecognized"),
+                }
+            );
             let (opcode, operand) = match self.program[i] {
                 0 => ("adv", combo),
                 1 => ("bxl", literal),
@@ -174,29 +160,33 @@ struct RegisterAFinder {
     current_a: Option<u64>,
     past_target: usize,
     program: Program,
+    target_a_options: Vec<Vec<u64>>,
 }
 
 impl RegisterAFinder {
     fn new(program: &Program) -> Self {
-        let program = program.clone();
-        let current_a = Some(0);
-        let past_target = program.program.len();
-        Self {current_a, program, past_target}
+        Self {
+            current_a: Some(0),
+            program: program.clone(),
+            past_target: program.program.len(),
+            target_a_options: vec![],
+        }
     }
 
     fn find_updated_a(&self) -> Option<u64> {
         let a = self.current_a.unwrap() * 8;
+        let mut result = None;
         for a_addition in 0..8 {
             if a > 0 || a_addition > 0 {
                 let updated_a = a + a_addition;
                 let outputs = self.program.with_a(updated_a).collect::<Vec<_>>();
                 println!("a_addition: {a_addition} outputs: {outputs:?}");
-                if &outputs[..] == &self.program.program[self.past_target..] {
-                    return Some(updated_a);
+                if result.is_none() && &outputs[..] == &self.program.program[self.past_target..] {
+                    result = Some(updated_a);
                 }
             }
         }
-        None
+        result
     }
 }
 
@@ -208,27 +198,16 @@ impl Iterator for RegisterAFinder {
         self.current_a = if self.past_target > 0 {
             self.past_target -= 1;
             let updated_a = self.find_updated_a();
-            println!("{} {:?} {:?}", self.past_target, updated_a.unwrap(), self.program.with_a(updated_a.unwrap()).collect::<Vec<_>>());
+            println!(
+                "{} {:?} {:?}",
+                self.past_target,
+                updated_a.unwrap(),
+                self.program.with_a(updated_a.unwrap()).collect::<Vec<_>>()
+            );
             Some(updated_a.unwrap())
         } else {
             None
         };
         result
     }
-}
-
-fn lowest_a_for_each(program: &Program) {
-    let mut lowest_as = BTreeMap::new();
-    let mut a = 0;
-    while lowest_as.len() < 8 {
-        let output = program.with_a(a).collect::<Vec<_>>();
-        for target in 0..8 {
-            if !lowest_as.contains_key(&target) && output.contains(&target) {
-                lowest_as.insert(target, (a, output));
-                break;
-            }
-        }
-        a += 1;
-    }
-    println!("{lowest_as:?}");
 }
