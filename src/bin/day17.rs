@@ -183,6 +183,21 @@ impl RegisterAFinder {
         let past_target = program.program.len();
         Self {current_a, program, past_target}
     }
+
+    fn find_updated_a(&self) -> Option<u64> {
+        let a = self.current_a.unwrap() * 8;
+        for a_addition in 0..8 {
+            if a > 0 || a_addition > 0 {
+                let updated_a = a + a_addition;
+                let outputs = self.program.with_a(updated_a).collect::<Vec<_>>();
+                println!("a_addition: {a_addition} outputs: {outputs:?}");
+                if &outputs[..] == &self.program.program[self.past_target..] {
+                    return Some(updated_a);
+                }
+            }
+        }
+        None
+    }
 }
 
 impl Iterator for RegisterAFinder {
@@ -192,7 +207,7 @@ impl Iterator for RegisterAFinder {
         let result = self.current_a;
         self.current_a = if self.past_target > 0 {
             self.past_target -= 1;
-            let updated_a = find_updated_a(&self.program, self.current_a.unwrap(), self.program.program[self.past_target]);
+            let updated_a = self.find_updated_a();
             println!("{} {:?} {:?}", self.past_target, updated_a.unwrap(), self.program.with_a(updated_a.unwrap()).collect::<Vec<_>>());
             Some(updated_a.unwrap())
         } else {
@@ -200,19 +215,6 @@ impl Iterator for RegisterAFinder {
         };
         result
     }
-}
-
-fn find_updated_a(program: &Program, a: u64, target_value: u8) -> Option<u64> {
-    let a = a * 8;
-    for a_addition in 0..8 {
-        if a > 0 || a_addition > 0 {
-            let updated_a = a + a_addition;
-            if program.with_a(updated_a).next().unwrap() == target_value {
-                return Some(updated_a);
-            }
-        }
-    }
-    None
 }
 
 fn lowest_a_for_each(program: &Program) {
