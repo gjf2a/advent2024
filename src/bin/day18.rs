@@ -66,7 +66,7 @@ impl ReachableSquares {
             for (r, _) in self.reachable.as_ref().unwrap().iter() {
                 grid.update(*r, 'R');
             }
-            println!("{grid}\n");
+            println!("{}\n{grid}\n", self.fallen_bombs.len());
         }
     }
 }
