@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::BTreeMap;
 
 use advent2024::{advent_main, all_lines, Part};
 use num::Integer;
@@ -171,25 +171,17 @@ fn nums_from_end(s: String) -> Vec<u8> {
 }
 
 struct RegisterAFinder {
-    table: BTreeMap<Vec<u8>, u64>,
-    pending: VecDeque<u8>,
-    incremental_a: Option<u64>,
+    current_a: Option<u64>,
+    past_target: usize,
+    program: Program,
 }
 
 impl RegisterAFinder {
     fn new(program: &Program) -> Self {
-        let mut table = BTreeMap::new();
-        for potential_a in 0..(2_u64.pow(24)) {
-            let outputs = program.with_a(potential_a).collect::<Vec<_>>();
-            if !table.contains_key(&outputs) {
-                if outputs.len() <= 2 || outputs.contains(&4) && outputs.len() <= 4 {
-                println!("{outputs:?}");}
-                table.insert(outputs, potential_a);
-            }
-        }
-        let pending = program.program.iter().copied().collect();
-        let incremental_a = Some(0);
-        Self {table, pending, incremental_a}
+        let program = program.clone();
+        let current_a = Some(0);
+        let past_target = program.program.len();
+        Self {current_a, program, past_target}
     }
 }
 
@@ -197,20 +189,30 @@ impl Iterator for RegisterAFinder {
     type Item = u64;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let result = self.incremental_a;
-        self.incremental_a = match self.pending.pop_front() {
-            None => None,
-            Some(front) => {
-                let mut pending_key = vec![front];
-                while !self.table.contains_key(&pending_key) {
-                    println!("pending_key: {pending_key:?} pending: {:?}", self.pending);
-                    pending_key.push(self.pending.pop_front().unwrap());
-                }
-                self.table.get(&pending_key).copied()
-            }
+        let result = self.current_a;
+        self.current_a = if self.past_target > 0 {
+            self.past_target -= 1;
+            let updated_a = find_updated_a(&self.program, self.current_a.unwrap(), self.program.program[self.past_target]);
+            println!("{} {:?} {:?}", self.past_target, updated_a.unwrap(), self.program.with_a(updated_a.unwrap()).collect::<Vec<_>>());
+            Some(updated_a.unwrap())
+        } else {
+            None
         };
         result
     }
+}
+
+fn find_updated_a(program: &Program, a: u64, target_value: u8) -> Option<u64> {
+    let a = a * 8;
+    for a_addition in 0..8 {
+        if a > 0 || a_addition > 0 {
+            let updated_a = a + a_addition;
+            if program.with_a(updated_a).next().unwrap() == target_value {
+                return Some(updated_a);
+            }
+        }
+    }
+    None
 }
 
 fn lowest_a_for_each(program: &Program) {
