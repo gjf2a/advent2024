@@ -37,7 +37,7 @@ fn part1(mut table: ReindeerPathTable) {
 }
 
 fn part2(mut table: ReindeerPathTable, show: bool) {
-    while let Some(_) = table.next() {}
+    let _ = table.by_ref().last();
     assert_eq!(table.num_empty_squares(), table.parents.keys().count());
     let on_path = table.visited_towards_exit();
     if show {
