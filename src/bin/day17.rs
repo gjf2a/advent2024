@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 
 use advent2024::{advent_main, all_lines, Part};
 use num::Integer;
@@ -160,7 +160,7 @@ struct RegisterAFinder {
     current_a: Option<u64>,
     past_target: usize,
     program: Program,
-    target_a_options: Vec<Vec<u64>>,
+    target_a_options: Vec<BTreeSet<u64>>,
 }
 
 impl RegisterAFinder {
@@ -168,21 +168,23 @@ impl RegisterAFinder {
         Self {
             current_a: Some(0),
             program: program.clone(),
-            past_target: program.program.len(),
-            target_a_options: vec![],
+            past_target: program.program.len() - 1,
+            target_a_options: vec![(0..8).filter(|a| program.with_a(*a).next().unwrap() as u64 == 0).collect()]
         }
     }
 
-    fn find_updated_a(&self) -> Option<u64> {
-        let a = self.current_a.unwrap() * 8;
-        let mut result = None;
-        for a_addition in 0..8 {
-            if a > 0 || a_addition > 0 {
+    fn find_updated_a(&self) -> BTreeSet<u64> {
+        let prev_as = self.target_a_options.last().unwrap();
+        println!("prev_as: {prev_as:?}");
+        let mut result = BTreeSet::new();
+        for prev_a in prev_as.iter() {
+            let a = prev_a * 8;
+            for a_addition in 0..8 {
                 let updated_a = a + a_addition;
                 let outputs = self.program.with_a(updated_a).collect::<Vec<_>>();
-                println!("a_addition: {a_addition} outputs: {outputs:?}");
-                if result.is_none() && &outputs[..] == &self.program.program[self.past_target..] {
-                    result = Some(updated_a);
+                println!("a_addition: {a_addition} outputs: {outputs:?} goal: {:?}", &self.program.program[self.past_target..]);
+                if &outputs[..] == &self.program.program[self.past_target..] {
+                    result.insert(updated_a);
                 }
             }
         }
@@ -198,13 +200,15 @@ impl Iterator for RegisterAFinder {
         self.current_a = if self.past_target > 0 {
             self.past_target -= 1;
             let updated_a = self.find_updated_a();
+            let min_a = updated_a.iter().next().copied().unwrap();
             println!(
                 "{} {:?} {:?}",
                 self.past_target,
-                updated_a.unwrap(),
-                self.program.with_a(updated_a.unwrap()).collect::<Vec<_>>()
+                updated_a,
+                self.program.with_a(min_a).collect::<Vec<_>>()
             );
-            Some(updated_a.unwrap())
+            self.target_a_options.push(updated_a);
+            Some(min_a)
         } else {
             None
         };
