@@ -19,9 +19,10 @@ fn main() -> anyhow::Result<()> {
             }
             Part::Two => {
                 if options.contains(&"-mina") {
-                    println!("Smallest possible A register value: {}", program.min_a_for_program());
-                }   
-                part2(program);
+                    lowest_a_for_each(&program);
+                } else {
+                    part2(program);
+                }
             }
         }
         Ok(())
@@ -112,12 +113,6 @@ impl Program {
         output
     }
 
-    fn min_a_for_program(&self) -> u64 {
-        let a_right_shift = (0..self.program.len()).step_by(2).find(|i| self.program[*i] == 0).map(|i| self.program[i + 1]).unwrap();
-        let target_bits = a_right_shift as u32 * self.program.len() as u32;
-        2_u64.pow(target_bits)
-    }
-
     fn print_program_listing(&self) {
         for i in (0..self.program.len()).step_by(2) {
             let literal = format!("{}", self.program[i + 1]);
@@ -187,7 +182,7 @@ impl RegisterAFinder {
         for potential_a in 0..(2_u64.pow(24)) {
             let outputs = program.with_a(potential_a).collect::<Vec<_>>();
             if !table.contains_key(&outputs) {
-                if outputs.len() <= 2 {
+                if outputs.len() <= 2 || outputs.contains(&4) && outputs.len() <= 4 {
                 println!("{outputs:?}");}
                 table.insert(outputs, potential_a);
             }
@@ -216,4 +211,20 @@ impl Iterator for RegisterAFinder {
         };
         result
     }
+}
+
+fn lowest_a_for_each(program: &Program) {
+    let mut lowest_as = BTreeMap::new();
+    let mut a = 0;
+    while lowest_as.len() < 8 {
+        let output = program.with_a(a).collect::<Vec<_>>();
+        for target in 0..8 {
+            if !lowest_as.contains_key(&target) && output.contains(&target) {
+                lowest_as.insert(target, (a, output));
+                break;
+            }
+        }
+        a += 1;
+    }
+    println!("{lowest_as:?}");
 }
