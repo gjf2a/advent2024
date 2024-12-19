@@ -1,9 +1,8 @@
-use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
+use std::collections::{BTreeSet, HashMap};
 
 use advent2024::{
     advent_main, all_lines, grid::GridCharWorld, multidim::{DirType, ManhattanDir, Position}, searchers::{breadth_first_search, ContinueSearch, SearchQueue}, Part
 };
-use common_macros::b_tree_map;
 use enum_iterator::all;
 use pancurses::{endwin, initscr, noecho, Input};
 
@@ -13,48 +12,47 @@ fn main() -> anyhow::Result<()> {
         let goal = Position::from((dim - 1, dim - 1));
         let bombs = all_lines(filename)?
             .map(|line| line.parse::<Position>().unwrap())
-            .collect();
-        let reachable = BombedSquares::new(bombs, dim);
+            .collect::<Vec<_>>();
         if options.contains(&"-view") {
-            let window = initscr();
-            window.keypad(true);
-            noecho();
-            for (step, fallen_bombs) in reachable.enumerate() {
-                let grid = bomb_grid_from(dim as usize, &fallen_bombs);
-                window.clear();
-                window.addstr(format!("Step {step}:\n{grid}"));
-                match window.getch() {
-                    Some(Input::Character(c)) => match c {
-                        'q' => break,
-                        _ => {}
-                    }
-                    Some(Input::KeyDC) => break,
-                    _ => {}
-                }
-            }
-            endwin();
+            view(dim, &bombs);
         } else {
             match part {
-                Part::One => part1(reachable, falls, goal),
-                Part::Two => {
-                    todo!()
-                }
+                Part::One => part1(bombs, falls, dim, goal),
+                Part::Two => part2(bombs, dim, goal),
             }
         }
         Ok(())
     })
 }
 
-fn part1(reachable: BombedSquares, falls: usize, goal: Position) {
-    let dim = reachable.dim as usize;
-    let fallen_bombs = reachable.skip(falls).next().unwrap();
-    let mut bomb_grid = bomb_grid_from(dim, &fallen_bombs);
-    println!("{bomb_grid}");
+fn part1(bombs: Vec<Position>, falls: usize, dim: isize, goal: Position) {
+    let fallen_bombs = (&bombs[0..falls]).iter().copied().collect::<BTreeSet<_>>();
+    let exit = find_exit(&fallen_bombs, goal, dim);
+    println!("{exit:?}");
+}
+
+fn part2(bombs: Vec<Position>, dim: isize, goal: Position) {
+    let result = find_impassible(&bombs, dim, goal);
+    println!("{result}");
+}
+
+fn find_impassible(bombs: &Vec<Position>, dim: isize, goal: Position) -> Position {
+    let mut fallen_bombs = BTreeSet::new();
+    for b in bombs.iter() {
+        fallen_bombs.insert(*b);
+        if find_exit(&fallen_bombs, goal, dim).is_none() {
+            return *b;
+        }
+    }
+    todo!("Impossible");
+}
+
+fn find_exit(fallen_bombs: &BTreeSet<Position>, goal: Position, dim: isize) -> Option<usize> {
     let mut closest = None;
     let start = Position::default();
     let mut distances = HashMap::<Position, usize>::new();
     distances.insert(start, 0);
-    let q = breadth_first_search(&start, |point, q| {
+    breadth_first_search(&start, |point, q| {
         if *point == goal {
             closest = Some(*point);
             ContinueSearch::No
@@ -74,50 +72,26 @@ fn part1(reachable: BombedSquares, falls: usize, goal: Position) {
             ContinueSearch::Yes
         }
     });
-    for p in q.path_back_from(closest.as_ref().unwrap()).unwrap() {
-        bomb_grid.update(p, 'O');
-    }
-    println!();
-    println!("{bomb_grid}");
-    println!("{closest:?}");
-    println!("{:?}", distances.get(&closest.unwrap()));
+    closest.map(|p| distances.get(&p).copied().unwrap())
 }
 
-struct BombedSquares {
-    bombs: VecDeque<Position>,
-    fallen_bombs: BTreeSet<Position>,
-    dim: isize,
-}
-
-impl BombedSquares {
-    fn new(bombs: VecDeque<Position>, dim: isize) -> Self {
-        Self {
-            bombs,
-            fallen_bombs: BTreeSet::new(),
-            dim,
-        }
-    }
-}
-
-fn bomb_grid_from(dim: usize, fallen_bombs: &BTreeSet<Position>) -> GridCharWorld {
-    let mut grid = GridCharWorld::new(dim, dim, '.');
-    for f in fallen_bombs.iter() {
-        grid.update(*f, '#');
-    }
-    grid
-}
-
-impl Iterator for BombedSquares {
-    type Item = BTreeSet<Position>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.bombs.pop_front() {
-            None => None,
-            Some(bomb) => {
-                let result = self.fallen_bombs.clone();
-                self.fallen_bombs.insert(bomb);
-                Some(result)
+fn view(dim: isize, bombs: &Vec<Position>) {
+    let window = initscr();
+    window.keypad(true);
+    noecho();
+    let mut grid = GridCharWorld::new(dim as usize, dim as usize, '.');
+    for (step, bomb) in bombs.iter().enumerate() {
+        window.clear();
+        window.addstr(format!("Step {step}:\n{grid}"));
+        grid.update(*bomb, '#');
+        match window.getch() {
+            Some(Input::Character(c)) => match c {
+                'q' => break,
+                _ => {}
             }
+            Some(Input::KeyDC) => break,
+            _ => {}
         }
     }
+    endwin();
 }
