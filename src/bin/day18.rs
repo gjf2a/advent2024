@@ -1,14 +1,22 @@
 use std::collections::{BTreeSet, HashMap};
 
 use advent2024::{
-    advent_main, all_lines, grid::GridCharWorld, multidim::{DirType, ManhattanDir, Position}, searchers::{breadth_first_search, ContinueSearch, SearchQueue}, Part
+    advent_main, all_lines,
+    grid::GridCharWorld,
+    multidim::{DirType, ManhattanDir, Position},
+    searchers::{breadth_first_search, ContinueSearch, SearchQueue},
+    Part,
 };
 use enum_iterator::all;
 use pancurses::{endwin, initscr, noecho, Input};
 
 fn main() -> anyhow::Result<()> {
     advent_main(|filename, part, options| {
-        let (dim, falls) = if filename.contains("ex") { (7, 12) } else { (71, 1024) };
+        let (dim, falls) = if filename.contains("ex") {
+            (7, 12)
+        } else {
+            (71, 1024)
+        };
         let goal = Position::from((dim - 1, dim - 1));
         let bombs = all_lines(filename)?
             .map(|line| line.parse::<Position>().unwrap())
@@ -59,11 +67,14 @@ fn find_exit(fallen_bombs: &BTreeSet<Position>, goal: Position, dim: isize) -> O
         } else {
             for dir in all::<ManhattanDir>() {
                 let neighbor = dir.neighbor(*point);
-                if !fallen_bombs.contains(&neighbor) && neighbor.values().all(|v| v >= 0 && v < dim as isize) {
+                if !fallen_bombs.contains(&neighbor)
+                    && neighbor.values().all(|v| v >= 0 && v < dim as isize)
+                {
                     let parent_distance = distances.get(point).copied().unwrap();
                     let current_distance = parent_distance + 1;
                     let prev_distance = distances.get(&neighbor);
-                    if prev_distance.is_none() || current_distance < prev_distance.copied().unwrap() {
+                    if prev_distance.is_none() || current_distance < prev_distance.copied().unwrap()
+                    {
                         distances.insert(neighbor, current_distance);
                     }
                     q.enqueue(&neighbor);
@@ -88,7 +99,7 @@ fn view(dim: isize, bombs: &Vec<Position>) {
             Some(Input::Character(c)) => match c {
                 'q' => break,
                 _ => {}
-            }
+            },
             Some(Input::KeyDC) => break,
             _ => {}
         }
