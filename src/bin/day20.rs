@@ -3,7 +3,8 @@ use std::collections::HashMap;
 use advent2024::{
     advent_main,
     grid::GridCharWorld,
-    multidim::{DirType, ManhattanDir, Position}, Part,
+    multidim::{DirType, ManhattanDir, Position},
+    Part,
 };
 use enum_iterator::all;
 
@@ -12,13 +13,22 @@ fn main() -> anyhow::Result<()> {
         let cheat_min = find_cheat_min(options);
         let maze = GridCharWorld::from_char_file(filename)?;
         let distances = Distances::new(&maze);
-        let good_cheats = maze
-            .position_iter()
-            .filter_map(|p| distances.cheat_value(p, part))
-            .map(|cv| distances.no_cheat - cv)
-            .filter(|s| *s >= cheat_min)
-            .count();
-        println!("{good_cheats}");
+        match part {
+            Part::One => {
+                /*let good_cheats = maze
+                .position_iter()
+                .filter_map(|p| distances.cheat_value(p))
+                .map(|cv| distances.no_cheat - cv)
+                .filter(|s| *s >= cheat_min)
+                .count();*/
+                let good_cheats = distances.incoming_cheat_count(2, cheat_min);
+                println!("{good_cheats}");
+            }
+            Part::Two => {
+                let good_cheats = distances.incoming_cheat_count(20, cheat_min);
+                println!("{good_cheats}");
+            }
+        }
         Ok(())
     })
 }
@@ -45,14 +55,19 @@ impl Distances {
         }
     }
 
-    fn cheat_value(&self, p: Position, part: Part) -> Option<usize> {
-        match part {
-            Part::One => self.part1(p),
-            Part::Two => self.part2(p, 20),
-        }
+    fn incoming_cheat_count(&self, cheat_dist: usize, cheat_min: usize) -> usize {
+        self.maze
+            .position_iter()
+            .map(|p| {
+                self.incoming_cheat_values(p, cheat_dist)
+                    .iter()
+                    .filter(|s| **s >= cheat_min)
+                    .count()
+            })
+            .sum::<usize>()
     }
 
-    fn part1(&self, p: Position) -> Option<usize> {
+    fn cheat_value(&self, p: Position) -> Option<usize> {
         if let Some(v) = self.maze.value(p) {
             if v == '#' {
                 for dir in all::<ManhattanDir>() {
@@ -71,8 +86,24 @@ impl Distances {
         None
     }
 
-    fn part2(&self, p: Position, cheat_dist: usize) -> Option<usize> {
-        todo!()
+    fn incoming_cheat_values(&self, p: Position, cheat_dist: usize) -> Vec<usize> {
+        let mut result = vec![];
+        if let Some(to_end) = self.dist2end.get(&p) {
+            if let Some(to_start) = self.dist2start.get(&p) {
+                for candidate in self.maze.position_iter() {
+                    let dist = candidate.manhattan_distance(&p) as usize;
+                    if dist <= cheat_dist {
+                        if let Some(candidate_start) = self.dist2start.get(&candidate) {
+                            let cheat_path = *to_end + dist + candidate_start;
+                            if cheat_path < to_start + to_end {
+                                result.push(self.no_cheat - cheat_path);
+                            }
+                        }
+                    }
+                }        
+            }
+        }
+        result
     }
 }
 
