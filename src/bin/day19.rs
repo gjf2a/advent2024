@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use advent2024::{advent_main, all_lines};
 
@@ -10,12 +10,55 @@ fn main() -> anyhow::Result<()> {
         let num_matches = input
             .skip(1)
             .inspect(|line| println!("Checking {line}..."))
-            .filter(|p| combo_for(p.as_str(), &towels).is_some())
-            .inspect(|p| println!("match! {:?}", combo_for(p.as_str(), &towels)))
+            .filter(|p| Table::new(p.as_str(), &towels).part1())
+            .inspect(|_| println!("match!"))
             .count();
         println!("{num_matches}");
         Ok(())
     })
+}
+
+struct Table {
+    pos2towels: Vec<Vec<usize>>,
+    towel_lengths: Vec<usize>,
+}
+
+impl Table {
+    fn new(pattern: &str, towels: &Vec<&str>) -> Self {
+        let towel_lengths = towels.iter().map(|t| t.len()).collect();
+        let pos2towels = (0..pattern.len())
+            .map(|i| {
+                towels
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, towel)| {
+                        i + towel.len() <= pattern.len()
+                            && &towel[..] == &pattern[i..i + towel.len()]
+                    })
+                    .map(|(t, _)| t)
+                    .collect()
+            })
+            .collect();
+
+        Self {
+            pos2towels,
+            towel_lengths,
+        }
+    }
+
+    fn part1(&self) -> bool {
+        let mut solutions = BTreeSet::new();
+        solutions.insert(self.pos2towels.len());
+        for p in (0..self.pos2towels.len()).rev() {
+            for towel in self.pos2towels[p].iter() {
+                let successor = p + self.towel_lengths[*towel];
+                if solutions.contains(&successor) {
+                    solutions.insert(p);
+                }
+            }
+        }
+        solutions.contains(&0)
+    }
 }
 
 fn combo_for(pattern: &str, towels: &Vec<&str>) -> Option<Combo> {
@@ -43,13 +86,12 @@ impl Combo {
         }
     }
 
-    fn can_add_towel(&self, towel_id: usize, towel_start: usize, towel_len: usize) -> bool {
-        !self.towels_used.contains(&towel_id)
-            && (towel_start..towel_start + towel_len).all(|i| self.available_indices.contains(&i))
+    fn can_add_towel(&self, towel_start: usize, towel_len: usize) -> bool {
+        (towel_start..towel_start + towel_len).all(|i| self.available_indices.contains(&i))
     }
 
     fn add_towel(&mut self, towel_id: usize, towel_start: usize, towel_len: usize) {
-        assert!(self.can_add_towel(towel_id, towel_start, towel_len));
+        assert!(self.can_add_towel(towel_start, towel_len));
         self.towels_used.insert(towel_id);
         for i in towel_start..towel_start + towel_len {
             self.available_indices.remove(&i);
@@ -85,6 +127,7 @@ impl ComboIterator {
             }
             towel2matches.push(towel_matches);
         }
+        println!("Ready!");
         Self {
             prev_combos,
             towel2matches,
@@ -104,8 +147,7 @@ impl Iterator for ComboIterator {
             for combo in self.prev_combos.iter() {
                 for (towel_id, matches) in self.towel2matches.iter().enumerate() {
                     for towel_start in matches.iter() {
-                        if combo.can_add_towel(towel_id, *towel_start, self.towel_lengths[towel_id])
-                        {
+                        if combo.can_add_towel(*towel_start, self.towel_lengths[towel_id]) {
                             let mut new_combo = combo.clone();
                             new_combo.add_towel(
                                 towel_id,
@@ -118,6 +160,7 @@ impl Iterator for ComboIterator {
                 }
             }
             std::mem::swap(&mut current_combos, &mut self.prev_combos);
+            println!("returning {} combos", current_combos.len());
             Some(current_combos)
         }
     }
