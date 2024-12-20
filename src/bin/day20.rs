@@ -20,7 +20,7 @@ fn main() -> anyhow::Result<()> {
                 Part::One => 2,
                 Part::Two => 20,
             };
-            let good_cheats = distances.incoming_cheat_count(cheat_dist, cheat_min);
+            let good_cheats = distances.cheats_above_min(cheat_dist, cheat_min);
             println!("{good_cheats}");
         }
         Ok(())
@@ -60,7 +60,7 @@ impl Distances {
         }
     }
 
-    fn incoming_cheat_count(&self, cheat_dist: usize, cheat_min: usize) -> usize {
+    fn cheats_above_min(&self, cheat_dist: usize, cheat_min: usize) -> usize {
         self.maze
             .position_iter()
             .map(|p| {
@@ -69,7 +69,7 @@ impl Distances {
                     .filter(|s| **s >= cheat_min)
                     .count()
             })
-            .sum::<usize>()
+            .sum()
     }
 
     fn incoming_cheat_savings(&self, p: Position, cheat_dist: usize) -> Vec<usize> {
