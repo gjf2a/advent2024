@@ -13,22 +13,12 @@ fn main() -> anyhow::Result<()> {
         let cheat_min = find_cheat_min(options);
         let maze = GridCharWorld::from_char_file(filename)?;
         let distances = Distances::new(&maze);
-        match part {
-            Part::One => {
-                /*let good_cheats = maze
-                .position_iter()
-                .filter_map(|p| distances.cheat_value(p))
-                .map(|cv| distances.no_cheat - cv)
-                .filter(|s| *s >= cheat_min)
-                .count();*/
-                let good_cheats = distances.incoming_cheat_count(2, cheat_min);
-                println!("{good_cheats}");
-            }
-            Part::Two => {
-                let good_cheats = distances.incoming_cheat_count(20, cheat_min);
-                println!("{good_cheats}");
-            }
-        }
+        let cheat_dist = match part {
+            Part::One => 2,
+            Part::Two => 20,
+        };
+        let good_cheats = distances.incoming_cheat_count(cheat_dist, cheat_min);
+        println!("{good_cheats}");
         Ok(())
     })
 }
@@ -59,7 +49,7 @@ impl Distances {
         self.maze
             .position_iter()
             .map(|p| {
-                self.incoming_cheat_values(p, cheat_dist)
+                self.incoming_cheat_savings(p, cheat_dist)
                     .iter()
                     .filter(|s| **s >= cheat_min)
                     .count()
@@ -67,26 +57,7 @@ impl Distances {
             .sum::<usize>()
     }
 
-    fn cheat_value(&self, p: Position) -> Option<usize> {
-        if let Some(v) = self.maze.value(p) {
-            if v == '#' {
-                for dir in all::<ManhattanDir>() {
-                    let prev = dir.inverse().neighbor(p);
-                    let next = dir.neighbor(p);
-                    if let Some(prev2end) = self.dist2end.get(&prev) {
-                        if let Some(next2end) = self.dist2end.get(&next) {
-                            if next2end < prev2end {
-                                return Some(next2end + 2 + self.dist2start.get(&prev).unwrap());
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        None
-    }
-
-    fn incoming_cheat_values(&self, p: Position, cheat_dist: usize) -> Vec<usize> {
+    fn incoming_cheat_savings(&self, p: Position, cheat_dist: usize) -> Vec<usize> {
         let mut result = vec![];
         if let Some(to_end) = self.dist2end.get(&p) {
             if let Some(to_start) = self.dist2start.get(&p) {
@@ -100,7 +71,7 @@ impl Distances {
                             }
                         }
                     }
-                }        
+                }
             }
         }
         result
