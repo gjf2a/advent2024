@@ -3,18 +3,18 @@ use std::collections::HashMap;
 use advent2024::{
     advent_main,
     grid::GridCharWorld,
-    multidim::{DirType, ManhattanDir, Position},
+    multidim::{DirType, ManhattanDir, Position}, Part,
 };
 use enum_iterator::all;
 
 fn main() -> anyhow::Result<()> {
-    advent_main(|filename, _part, options| {
+    advent_main(|filename, part, options| {
         let cheat_min = find_cheat_min(options);
         let maze = GridCharWorld::from_char_file(filename)?;
         let distances = Distances::new(&maze);
         let good_cheats = maze
             .position_iter()
-            .filter_map(|p| distances.cheat_value(p))
+            .filter_map(|p| distances.cheat_value(p, part))
             .map(|cv| distances.no_cheat - cv)
             .filter(|s| *s >= cheat_min)
             .count();
@@ -45,9 +45,16 @@ impl Distances {
         }
     }
 
-    fn cheat_value(&self, p: Position) -> Option<usize> {
+    fn cheat_value(&self, p: Position, part: Part) -> Option<usize> {
+        match part {
+            Part::One => self.part1(p),
+            Part::Two => self.part2(p, 20),
+        }
+    }
+
+    fn part1(&self, p: Position) -> Option<usize> {
         if let Some(v) = self.maze.value(p) {
-            if v == '#' && !self.maze.at_edge(p) {
+            if v == '#' {
                 for dir in all::<ManhattanDir>() {
                     let prev = dir.inverse().neighbor(p);
                     let next = dir.neighbor(p);
@@ -62,6 +69,10 @@ impl Distances {
             }
         }
         None
+    }
+
+    fn part2(&self, p: Position, cheat_dist: usize) -> Option<usize> {
+        todo!()
     }
 }
 
