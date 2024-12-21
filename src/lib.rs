@@ -41,12 +41,23 @@ pub fn advent_main(code: fn(&str, Part, Vec<&str>) -> anyhow::Result<()>) -> any
     } else if args.len() == 2 {
         code(args[1].as_str(), Part::One, vec![])?;
     } else {
-        let options = args
+        let mut options = vec![];
+        let op_start = args
             .iter()
-            .skip(3)
-            .map(|arg| arg.as_str())
-            .collect::<Vec<_>>();
-        code(args[1].as_str(), args[2].parse().unwrap(), options)?;
+            .enumerate()
+            .find(|(_, a)| a.starts_with("-"))
+            .map_or(args.len(), |(i, _)| i);
+        println!("op_start: {op_start}");
+        for i in op_start..args.len() {
+            options.push(args[i].as_str());
+        }
+        let filename = if op_start > 1 { args[1].as_str() } else { "" };
+        let part = if op_start > 2 {
+            args[2].parse().unwrap()
+        } else {
+            Part::One
+        };
+        code(filename, part, options)?;
     }
     let duration = Instant::now().duration_since(start);
     println!("duration: {} ms", duration.as_millis());
