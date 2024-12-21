@@ -2,6 +2,7 @@ pub mod combinations;
 pub mod extended_euclid;
 pub mod grid;
 pub mod multidim;
+pub mod search_iter;
 pub mod searchers;
 
 use std::{
