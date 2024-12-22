@@ -1,4 +1,6 @@
 use common_macros::hash_map;
+use priority_queue::PriorityQueue;
+use std::cmp::Reverse;
 use std::collections::{HashMap, VecDeque};
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -8,14 +10,14 @@ trait_set! {
     pub trait SearchNode = Clone + Hash + Eq + Debug;
 }
 
-pub struct BfsIter<T: SearchNode, I: Iterator<Item = T>, S: Fn(T) -> I> {
+pub struct BfsIter<T: SearchNode, S: Fn(T) -> I, I: Iterator<Item = T>> {
     queue: VecDeque<(T, usize)>,
     depths: HashMap<T, usize>,
     parents: HashMap<T, Option<T>>,
     successor: S,
 }
 
-impl<T: SearchNode, I: Iterator<Item = T>, S: Fn(T) -> I> BfsIter<T, I, S> {
+impl<T: SearchNode, S: Fn(T) -> I, I: Iterator<Item = T>> BfsIter<T, S, I> {
     pub fn new(start: T, successor: S) -> Self {
         let mut queue = VecDeque::new();
         queue.push_back((start.clone(), 0));
@@ -36,7 +38,7 @@ impl<T: SearchNode, I: Iterator<Item = T>, S: Fn(T) -> I> BfsIter<T, I, S> {
     }
 }
 
-impl<T: SearchNode, I: Iterator<Item = T>, S: Fn(T) -> I> Iterator for BfsIter<T, I, S> {
+impl<T: SearchNode, S: Fn(T) -> I, I: Iterator<Item = T>> Iterator for BfsIter<T, S, I> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -62,6 +64,62 @@ fn path_back_from<T: SearchNode>(node: &T, parents: &HashMap<T, Option<T>>) -> V
         current = parent;
     }
     result
+}
+
+pub struct PrioritySearchIter<T: SearchNode, S: Fn(T) -> I, I: Iterator<Item = T>, C: Fn(&T) -> usize> {
+    queue: PriorityQueue<T, Reverse<usize>>,
+    costs: HashMap<T, usize>,
+    parents: HashMap<T, Option<T>>,
+    successor: S,
+    cost: C,
+}
+
+impl<T: SearchNode, S: Fn(T) -> I, I: Iterator<Item = T>, C: Fn(&T) -> usize> PrioritySearchIter<T, S, I, C> {
+    pub fn new(start: T, successor: S, cost: C) -> Self {
+        let mut queue = PriorityQueue::new();
+        queue.push(start.clone(), Reverse(0));
+        Self {
+            queue,
+            costs: hash_map!(start.clone() => 0),
+            successor,
+            parents: hash_map!(start.clone() => None),
+            cost
+        }
+    }
+
+    pub fn path_back_from(&self, node: &T) -> VecDeque<T> {
+        path_back_from(node, &self.parents)
+    }
+
+    pub fn cost_for(&self, node: &T) -> usize {
+        self.costs.get(node).copied().unwrap()
+    }
+}
+
+impl<T: SearchNode, S: Fn(T) -> I, I: Iterator<Item = T>, C: Fn(&T) -> usize> Iterator for PrioritySearchIter<T, S, I, C> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.queue.pop().map(|(parent, cost)| {
+            self.costs.insert(parent.clone(), cost.0);
+            for child in (self.successor)(parent.clone()) {
+                let new_priority = Reverse((self.cost)(&child) + cost.0);
+                match self.queue.get_priority(&child) {
+                    Some(priority) => {
+                        if new_priority > *priority {
+                            self.parents.insert(child.clone(), Some(parent.clone()));
+                            self.queue.change_priority(&child, new_priority);
+                        }
+                    }
+                    None => {
+                        self.parents.insert(child.clone(), Some(parent.clone()));
+                        self.queue.push(child, new_priority);
+                    }
+                }
+            }
+            parent
+        }) 
+    }
 }
 
 #[cfg(test)]
