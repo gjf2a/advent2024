@@ -30,6 +30,10 @@ impl<T: SearchNode, I: Iterator<Item = T>, S: Fn(T) -> I> BfsIter<T, I, S> {
     pub fn path_back_from(&self, node: &T) -> VecDeque<T> {
         path_back_from(node, &self.parents)
     }
+
+    pub fn depth_for(&self, node: &T) -> usize {
+        self.depths.get(node).copied().unwrap()
+    }
 }
 
 impl<T: SearchNode, I: Iterator<Item = T>, S: Fn(T) -> I> Iterator for BfsIter<T, I, S> {
