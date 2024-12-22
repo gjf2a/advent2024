@@ -18,7 +18,7 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn mix_and_prune(a: i128, b: i128) -> i128 {
-    (a ^ b) & 16777215
+    (a ^ b) & 0xffffff
 }
 
 struct SecretNumberSequence {
