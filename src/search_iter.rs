@@ -5,17 +5,17 @@ use std::hash::Hash;
 use trait_set::trait_set;
 
 trait_set! {
-    pub trait Node = Clone + Hash + Eq + Debug;
+    pub trait SearchNode = Clone + Hash + Eq + Debug;
 }
 
-pub struct BfsIter<T: Node, I: Iterator<Item = T>, S: Fn(T) -> I> {
+pub struct BfsIter<T: SearchNode, I: Iterator<Item = T>, S: Fn(T) -> I> {
     queue: VecDeque<(T, usize)>,
     depths: HashMap<T, usize>,
     parents: HashMap<T, Option<T>>,
     successor: S,
 }
 
-impl<T: Node, I: Iterator<Item = T>, S: Fn(T) -> I> BfsIter<T, I, S> {
+impl<T: SearchNode, I: Iterator<Item = T>, S: Fn(T) -> I> BfsIter<T, I, S> {
     pub fn new(start: T, successor: S) -> Self {
         let mut queue = VecDeque::new();
         queue.push_back((start.clone(), 0));
@@ -32,7 +32,7 @@ impl<T: Node, I: Iterator<Item = T>, S: Fn(T) -> I> BfsIter<T, I, S> {
     }
 }
 
-impl<T: Node, I: Iterator<Item = T>, S: Fn(T) -> I> Iterator for BfsIter<T, I, S> {
+impl<T: SearchNode, I: Iterator<Item = T>, S: Fn(T) -> I> Iterator for BfsIter<T, I, S> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -49,7 +49,7 @@ impl<T: Node, I: Iterator<Item = T>, S: Fn(T) -> I> Iterator for BfsIter<T, I, S
     }
 }
 
-fn path_back_from<T: Node>(node: &T, parents: &HashMap<T, Option<T>>) -> VecDeque<T> {
+fn path_back_from<T: SearchNode>(node: &T, parents: &HashMap<T, Option<T>>) -> VecDeque<T> {
     let mut result = VecDeque::new();
     let mut current = node;
     result.push_back(current.clone());

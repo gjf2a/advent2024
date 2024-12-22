@@ -18,7 +18,8 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn view() {
-    let mut chain = PadChain::default();
+    let chain = PadChain::default();
+    let mut arms = chain.starting_arms();
     let window = initscr();
     window.keypad(true);
     noecho();
@@ -30,7 +31,7 @@ fn view() {
         match window.getch() {
             Some(Input::Character(c)) => match c {
                 '^' | 'v' | '<' | '>' | 'A' | 'a' => {
-                    chain.move_arm(c);
+                    chain.move_arms(c, &mut arms);
                 }
                 'q' => break,
                 _ => {}
@@ -38,13 +39,17 @@ fn view() {
             Some(Input::KeyDC) => break,
             _ => {}
         }
-        window.addstr(format!("{:?}", chain.outputs));
+        window.addstr(format!("{:?}", arms.outputs));
     }
     endwin();
 }
 
 struct PadChain {
     pads: [KeyPad; 4],
+}
+
+struct Arms {
+    arms: [Position; 4],
     outputs: Vec<char>,
 }
 
@@ -57,21 +62,32 @@ impl Default for PadChain {
                 KeyPad::new(DIRECTION_PAD),
                 KeyPad::new(KEYPAD),
             ],
-            outputs: vec![],
         }
     }
 }
 
 impl PadChain {
-    fn move_arm(&mut self, mut key_char: char) {
+    fn starting_arms(&self) -> Arms {
+        Arms {
+            arms: self.pads.clone().map(|p| p.keys.any_position_for('A')),
+            outputs: vec![],
+        }
+    }
+
+    fn move_arms(&self, key_char: char, arms: &mut Arms) {
+        let mut key_char = key_char;
         let mut i = 0;
         loop {
-            match self.pads[i].move_arm(key_char) {
-                None => return,
-                Some(c) => {
+            match self.pads[i].arm_moved(key_char, arms.arms[i]) {
+                Some(arm_moved) => {
+                    arms.arms[i] = arm_moved;
+                    return;
+                }
+                None => {
+                    let c = self.pads[i].char_pressed(key_char, arms.arms[i]).unwrap();
                     i += 1;
-                    if i == self.pads.len() {
-                        self.outputs.push(c);
+                    if i == arms.arms.len() {
+                        arms.outputs.push(c);
                         return;
                     } else {
                         key_char = c;
@@ -95,17 +111,20 @@ impl KeyPad {
         Self { keys, current }
     }
 
-    fn move_arm(&mut self, key_char: char) -> Option<char> {
+    fn char_pressed(&self, key_char: char, arm: Position) -> Option<char> {
         if key_char.to_ascii_uppercase() == 'A' {
-            Some(self.keys.value(self.current).unwrap())
+            Some(self.keys.value(arm).unwrap())
         } else {
-            let arm_moved = ManhattanDir::try_from(key_char)
-                .unwrap()
-                .neighbor(self.current);
-            assert!(self.keys.in_bounds(arm_moved));
-            self.current = arm_moved;
             None
         }
+    }
+
+    fn arm_moved(&self, key_char: char, arm: Position) -> Option<Position> {
+        let arm_moved = ManhattanDir::try_from(key_char).unwrap().neighbor(arm);
+        self.keys
+            .value(arm_moved)
+            .filter(|v| *v != ' ')
+            .map(|_| arm_moved)
     }
 }
 
@@ -115,7 +134,11 @@ impl Display for KeyPad {
             if p[0] == 0 && p[1] > 0 {
                 writeln!(f)?;
             }
-            let c = if p == self.current {'*'} else { self.keys.value(p).unwrap()};
+            let c = if p == self.current {
+                '*'
+            } else {
+                self.keys.value(p).unwrap()
+            };
             write!(f, "{c}")?;
         }
         writeln!(f)
