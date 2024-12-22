@@ -30,22 +30,7 @@ fn part2(filename: &str) -> anyhow::Result<()> {
     let mut changes2bananas = vec![];
     for line in all_lines(filename)? {
         let line = line.parse::<i128>().unwrap();
-        let mut changes = Changes::default();
-        let mut sequence = SecretNumberSequence::new(line).take(2000);
-        let mut prev = sequence.by_ref().next().unwrap().mod_floor(&10);
-        let mut change_map = HashMap::new();
-        for num in sequence {
-            let digit = num.mod_floor(&10);
-            changes.add(digit - prev);
-            if changes.full() {
-                sequences.insert(changes);
-                if !change_map.contains_key(&changes) {
-                    change_map.insert(changes, digit);
-                }
-            }
-            prev = digit;
-        }
-        changes2bananas.push(change_map);
+        changes2bananas.push(change_banana_map(line, &mut sequences));
     }
     println!("Candidate sequences: {}", sequences.len());
     let best_total = sequences
@@ -60,6 +45,25 @@ fn part2(filename: &str) -> anyhow::Result<()> {
         .unwrap();
     println!("{best_total}");
     Ok(())
+}
+
+fn change_banana_map(line: i128, sequences: &mut HashSet<Changes>) -> HashMap<Changes, i128> {
+    let mut changes = Changes::default();
+    let mut sequence = SecretNumberSequence::new(line).take(2000);
+    let mut prev = sequence.by_ref().next().unwrap().mod_floor(&10);
+    let mut change_map = HashMap::new();
+    for num in sequence {
+        let digit = num.mod_floor(&10);
+        changes.add(digit - prev);
+        if changes.full() {
+            sequences.insert(changes);
+            if !change_map.contains_key(&changes) {
+                change_map.insert(changes, digit);
+            }
+        }
+        prev = digit;
+    }
+    change_map
 }
 
 fn mix_and_prune(a: i128, b: i128) -> i128 {
