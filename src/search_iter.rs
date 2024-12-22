@@ -1,11 +1,11 @@
 use common_macros::hash_map;
+use num::Integer;
 use priority_queue::PriorityQueue;
 use std::collections::{HashMap, VecDeque};
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::ops::Add;
 use trait_set::trait_set;
-use num::Integer;
 
 trait_set! {
     pub trait SearchNode = Clone + Hash + Eq + Debug;
@@ -79,7 +79,10 @@ struct TotalEstimate<N: Estimator> {
 
 impl<N: Estimator> TotalEstimate<N> {
     fn new(from_start: N, estimate_to_goal: N) -> Self {
-        Self {from_start, estimate_to_goal}
+        Self {
+            from_start,
+            estimate_to_goal,
+        }
     }
 
     fn total(&self) -> N {
@@ -93,23 +96,19 @@ impl<N: Estimator> PartialOrd for TotalEstimate<N> {
     }
 }
 
-pub struct PrioritySearchIter<
-N: Estimator,
-    T: SearchNode,
-    I: Iterator<Item = T>,
-> {
+pub struct PrioritySearchIter<N: Estimator, T: SearchNode, S: Fn(T) -> Vec<T>, H: Fn(&T) -> N> {
     queue: PriorityQueue<T, TotalEstimate<N>>,
     costs: HashMap<T, N>,
     parents: HashMap<T, Option<T>>,
-    successor: fn(T) -> I,
+    successor: S,
     cost: fn(&T) -> N,
-    heuristic: fn(&T) -> N,
+    heuristic: H,
 }
 
-impl<N: Estimator, T: SearchNode, I: Iterator<Item = T>>
-    PrioritySearchIter<N, T, I>
+impl<N: Estimator, T: SearchNode, S: Fn(T) -> Vec<T>, H: Fn(&T) -> N>
+    PrioritySearchIter<N, T, S, H>
 {
-    pub fn a_star(start: T, successor: fn(T) -> I, cost: fn(&T) -> N, heuristic: fn(&T) -> N) -> Self {
+    pub fn a_star(start: T, successor: S, cost: fn(&T) -> N, heuristic: H) -> Self {
         let mut queue = PriorityQueue::new();
         queue.push(start.clone(), TotalEstimate::default());
         Self {
@@ -122,10 +121,6 @@ impl<N: Estimator, T: SearchNode, I: Iterator<Item = T>>
         }
     }
 
-    pub fn dijkstra(start: T, successor: fn(T) -> I, cost: fn(&T) -> N) -> Self {
-        Self::a_star(start, successor, cost, |_| N::zero())
-    }
-
     pub fn path_back_from(&self, node: &T) -> VecDeque<T> {
         path_back_from(node, &self.parents)
     }
@@ -135,14 +130,20 @@ impl<N: Estimator, T: SearchNode, I: Iterator<Item = T>>
     }
 }
 
-impl<T: SearchNode, I: Iterator<Item = T>> PrioritySearchIter<usize, T, I> {
-    pub fn bfs(start: T, successor: fn(T) -> I) -> Self {
+impl<N: Estimator, T: SearchNode, S: Fn(T) -> Vec<T>> PrioritySearchIter<N, T, S, fn(&T) -> N> {
+    pub fn dijkstra(start: T, successor: S, cost: fn(&T) -> N) -> Self {
+        Self::a_star(start, successor, cost, |_| N::zero())
+    }
+}
+
+impl<T: SearchNode, S: Fn(T) -> Vec<T>> PrioritySearchIter<usize, T, S, fn(&T) -> usize> {
+    pub fn bfs(start: T, successor: S) -> Self {
         Self::dijkstra(start, successor, |_| 1)
     }
 }
 
-impl<N: Estimator, T: SearchNode, I: Iterator<Item = T>> Iterator
-    for PrioritySearchIter<N, T, I>
+impl<N: Estimator, T: SearchNode, S: Fn(T) -> Vec<T>, H: Fn(&T) -> N> Iterator
+    for PrioritySearchIter<N, T, S, H>
 {
     type Item = T;
 
@@ -151,7 +152,10 @@ impl<N: Estimator, T: SearchNode, I: Iterator<Item = T>> Iterator
             self.costs.insert(parent.clone(), cost.from_start);
             for child in (self.successor)(parent.clone()) {
                 if !self.costs.contains_key(&child) {
-                    let new_priority = TotalEstimate::new(cost.from_start + (self.cost)(&child), (self.heuristic)(&child));
+                    let new_priority = TotalEstimate::new(
+                        cost.from_start + (self.cost)(&child),
+                        (self.heuristic)(&child),
+                    );
                     match self.queue.get_priority(&child) {
                         Some(priority) => {
                             if new_priority > *priority {
@@ -176,6 +180,7 @@ mod tests {
     use enum_iterator::all;
 
     use crate::{
+        grid::GridCharWorld,
         multidim::{DirType, ManhattanDir, Position},
         search_iter::{path_back_from, BfsIter, PrioritySearchIter},
     };
@@ -206,12 +211,13 @@ mod tests {
     fn test_priority_bfs() {
         println!("Test Priority BFS");
         let max_dist = 2;
-        let start = (Position::default(), Position::default(), max_dist);
+        let start = Position::default();
         println!("Starting BFS");
         let mut searcher = PrioritySearchIter::bfs(start, |n| {
             all::<ManhattanDir>()
-                .map(move |d| (d.neighbor(n.0), n.1, n.2))
-                .filter(|(p,start,m)| p.manhattan_distance(start) <= *m)
+                .map(|d| d.neighbor(n))
+                .filter(|p| p.manhattan_distance(&start) <= max_dist)
+                .collect()
         });
         searcher.by_ref().last();
         println!("Search complete.");
@@ -222,5 +228,40 @@ mod tests {
             println!("From {:?}: {}", node, len);
             assert!(len <= 1 + max_dist as usize);
         }
+    }
+
+    #[test]
+    fn test_priority_a_star() {
+        let maze_str = ".....##
+###.###
+#.....#
+#.#.#.#
+#...#..";
+        let maze = maze_str.parse::<GridCharWorld>().unwrap();
+        println!("{maze}");
+        let start = Position::default();
+        let exit = Position::from((
+            maze.width() as isize - 1,
+            maze.height() as isize - 1 as isize,
+        ));
+        println!("exit: {exit}");
+        let mut searcher = PrioritySearchIter::a_star(
+            start,
+            |p| {
+                all::<ManhattanDir>()
+                    .map(|d| d.neighbor(p))
+                    .filter(|c| maze.value(*c).map_or(false, |v| v == '.'))
+                    .collect()
+            },
+            |_| 1,
+            |p| exit.manhattan_distance(p),
+        );
+        let result = searcher
+            .by_ref()
+            .find(|p| *p == exit)
+            .unwrap();
+        assert_eq!(result, exit);
+        let path = searcher.path_back_from(&result);
+        println!("{path:?}");
     }
 }
