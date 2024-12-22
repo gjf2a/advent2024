@@ -249,3 +249,20 @@ impl<V: Copy + Clone + Debug + Default + Display> InfiniteGrid<V> {
         self.map.keys().map(|k| k[1]).max().unwrap()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::GridCharWorld;
+
+    #[test]
+    fn test_grid_read() {
+        let maze_str = ".....##
+###.###
+#.....#
+#.#####
+#......";
+
+        let maze = maze_str.parse::<GridCharWorld>().unwrap();
+        assert_eq!(maze_str, format!("{maze}").as_str());
+    }
+}
