@@ -4,7 +4,9 @@ use std::cmp::Reverse;
 use std::collections::{HashMap, VecDeque};
 use std::fmt::Debug;
 use std::hash::Hash;
+use std::ops::Add;
 use trait_set::trait_set;
+use num::Integer;
 
 trait_set! {
     pub trait SearchNode = Clone + Hash + Eq + Debug;
@@ -66,53 +68,84 @@ fn path_back_from<T: SearchNode>(node: &T, parents: &HashMap<T, Option<T>>) -> V
     result
 }
 
-pub struct PrioritySearchIter<
-    T: SearchNode,
-    S: Fn(T) -> I,
-    I: Iterator<Item = T>,
-    C: Fn(&T) -> usize,
-> {
-    queue: PriorityQueue<T, Reverse<usize>>,
-    costs: HashMap<T, usize>,
-    parents: HashMap<T, Option<T>>,
-    successor: S,
-    cost: C,
+trait_set! {
+    pub trait Estimator = Integer + Copy + Clone + Add<Output=Self> + PartialOrd + Ord + Debug + Default
 }
 
-impl<T: SearchNode, S: Fn(T) -> I, I: Iterator<Item = T>, C: Fn(&T) -> usize>
-    PrioritySearchIter<T, S, I, C>
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Default, Ord)]
+struct TotalEstimate<N: Estimator> {
+    from_start: N,
+    estimate_to_goal: N,
+}
+
+impl<N: Estimator> TotalEstimate<N> {
+    fn new(from_start: N, estimate_to_goal: N) -> Self {
+        Self {from_start, estimate_to_goal}
+    }
+
+    fn total(&self) -> N {
+        self.from_start + self.estimate_to_goal
+    }
+}
+
+impl<N: Estimator> PartialOrd for TotalEstimate<N> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        other.total().partial_cmp(&self.total())
+    }
+}
+
+pub struct PrioritySearchIter<
+N: Estimator,
+    T: SearchNode,
+    I: Iterator<Item = T>,
+> {
+    queue: PriorityQueue<T, TotalEstimate<N>>,
+    costs: HashMap<T, N>,
+    parents: HashMap<T, Option<T>>,
+    successor: fn(T) -> I,
+    cost: fn(&T) -> N,
+    heuristic: fn(&T) -> N,
+}
+
+impl<N: Estimator, T: SearchNode, I: Iterator<Item = T>>
+    PrioritySearchIter<N, T, I>
 {
-    pub fn new(start: T, successor: S, cost: C) -> Self {
+    pub fn a_star(start: T, successor: fn(T) -> I, cost: fn(&T) -> N, heuristic: fn(&T) -> N) -> Self {
         let mut queue = PriorityQueue::new();
-        queue.push(start.clone(), Reverse(0));
+        queue.push(start.clone(), TotalEstimate::default());
         Self {
             queue,
-            costs: hash_map!(start.clone() => 0),
+            costs: hash_map!(start.clone() => N::zero()),
             successor,
             parents: hash_map!(start.clone() => None),
             cost,
+            heuristic,
         }
+    }
+
+    pub fn dijkstra(start: T, successor: fn(T) -> I, cost: fn(&T) -> N) -> Self {
+        Self::a_star(start, successor, cost, |_| N::zero())
     }
 
     pub fn path_back_from(&self, node: &T) -> VecDeque<T> {
         path_back_from(node, &self.parents)
     }
 
-    pub fn cost_for(&self, node: &T) -> usize {
+    pub fn cost_for(&self, node: &T) -> N {
         self.costs.get(node).copied().unwrap()
     }
 }
 
-impl<T: SearchNode, S: Fn(T) -> I, I: Iterator<Item = T>, C: Fn(&T) -> usize> Iterator
-    for PrioritySearchIter<T, S, I, C>
+impl<N: Estimator, T: SearchNode, I: Iterator<Item = T>> Iterator
+    for PrioritySearchIter<N, T, I>
 {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.queue.pop().map(|(parent, cost)| {
-            self.costs.insert(parent.clone(), cost.0);
+            self.costs.insert(parent.clone(), cost.from_start);
             for child in (self.successor)(parent.clone()) {
-                let new_priority = Reverse((self.cost)(&child) + cost.0);
+                let new_priority = TotalEstimate::new(cost.from_start + (self.cost)(&child), (self.heuristic)(&child));
                 match self.queue.get_priority(&child) {
                     Some(priority) => {
                         if new_priority > *priority {
