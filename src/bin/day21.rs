@@ -25,8 +25,8 @@ fn view() {
     noecho();
     loop {
         window.clear();
-        for pad in chain.pads.iter() {
-            window.addstr(format!("{pad}\n"));
+        for (i, pad) in chain.pads.iter().enumerate() {
+            window.addstr(format!("{}\n", pad.show(arms.arms[i])));
         }
         match window.getch() {
             Some(Input::Character(c)) => match c {
@@ -101,14 +101,12 @@ impl PadChain {
 #[derive(Clone)]
 struct KeyPad {
     keys: GridCharWorld,
-    current: Position,
 }
 
 impl KeyPad {
     fn new(key_str: &str) -> Self {
         let keys = key_str.parse::<GridCharWorld>().unwrap();
-        let current = keys.any_position_for('A');
-        Self { keys, current }
+        Self { keys }
     }
 
     fn char_pressed(&self, key_char: char, arm: Position) -> Option<char> {
@@ -126,22 +124,22 @@ impl KeyPad {
             .filter(|v| *v != ' ')
             .map(|_| arm_moved)
     }
-}
 
-impl Display for KeyPad {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn show(&self, arm: Position) -> String {
+        let mut result = String::new();
         for p in self.keys.position_iter() {
             if p[0] == 0 && p[1] > 0 {
-                writeln!(f)?;
+                result.push('\n');
             }
-            let c = if p == self.current {
+            let c = if p == arm {
                 '*'
             } else {
                 self.keys.value(p).unwrap()
             };
-            write!(f, "{c}")?;
+            result.push(c);
         }
-        writeln!(f)
+        result.push('\n');
+        result
     }
 }
 
