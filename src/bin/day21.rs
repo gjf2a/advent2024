@@ -1,9 +1,8 @@
-use std::fmt::Display;
-
 use advent2024::{
-    advent_main,
+    advent_main, all_lines,
     grid::GridCharWorld,
     multidim::{DirType, ManhattanDir, Position},
+    search_iter::BfsIter,
 };
 use pancurses::{endwin, initscr, noecho, Input};
 
@@ -12,6 +11,36 @@ fn main() -> anyhow::Result<()> {
         println!("{filename} {part:?}");
         if options.contains(&"-view") {
             view();
+        } else {
+            let chain = PadChain::default();
+            let mut total_complexity = 0;
+            for code in all_lines(filename)? {
+                println!("Checking {code}");
+                let arms = chain.starting_arms();
+                let mut searcher = BfsIter::new(arms.clone(), |current| {
+                    let current = current.clone();
+                    let chain = chain.clone();
+                    println!("{current:?}");
+                    ['<', '>', 'v', '^', 'A']
+                        .iter()
+                        .filter_map(move |c| chain.moved_arms(*c, &current))
+                });
+                match searcher.find(|arms| arms.output_matches(code.as_str())) {
+                    Some(found) => {
+                        let length = searcher.depth_for(&found);
+                        let encoded = (&code[..(code.len() - 1)]).parse::<usize>().unwrap();
+                        println!(
+                            "length: {length} encoded: {encoded} complexity: {}",
+                            length * encoded
+                        );
+                        total_complexity += length * encoded;
+                    }
+                    None => {
+                        panic!("Unreachable: {code}");
+                    }
+                }
+            }
+            println!("{total_complexity}");
         }
         Ok(())
     })
@@ -31,7 +60,9 @@ fn view() {
         match window.getch() {
             Some(Input::Character(c)) => match c {
                 '^' | 'v' | '<' | '>' | 'A' | 'a' => {
-                    chain.move_arms(c, &mut arms);
+                    if let Some(moved) = chain.moved_arms(c, &arms) {
+                        arms = moved;
+                    }
                 }
                 'q' => break,
                 _ => {}
@@ -44,13 +75,25 @@ fn view() {
     endwin();
 }
 
+#[derive(Clone)]
 struct PadChain {
     pads: [KeyPad; 4],
 }
 
+#[derive(Clone, Hash, PartialEq, Eq, Debug)]
 struct Arms {
     arms: [Position; 4],
     outputs: Vec<char>,
+}
+
+impl Arms {
+    fn output_matches(&self, target: &str) -> bool {
+        self.outputs.len() == target.len()
+            && target
+                .chars()
+                .zip(self.outputs.iter())
+                .all(|(c1, c2)| c1 == *c2)
+    }
 }
 
 impl Default for PadChain {
@@ -74,25 +117,28 @@ impl PadChain {
         }
     }
 
-    fn move_arms(&self, key_char: char, arms: &mut Arms) {
+    fn moved_arms(&self, key_char: char, arms: &Arms) -> Option<Arms> {
+        let mut arms = arms.clone();
         let mut key_char = key_char;
         let mut i = 0;
         loop {
             match self.pads[i].arm_moved(key_char, arms.arms[i]) {
                 Some(arm_moved) => {
                     arms.arms[i] = arm_moved;
-                    return;
+                    return Some(arms);
                 }
-                None => {
-                    let c = self.pads[i].char_pressed(key_char, arms.arms[i]).unwrap();
-                    i += 1;
-                    if i == arms.arms.len() {
-                        arms.outputs.push(c);
-                        return;
-                    } else {
-                        key_char = c;
+                None => match self.pads[i].char_pressed(key_char, arms.arms[i]) {
+                    Some(c) => {
+                        i += 1;
+                        if i == arms.arms.len() {
+                            arms.outputs.push(c);
+                            return Some(arms);
+                        } else {
+                            key_char = c;
+                        }
                     }
-                }
+                    None => return None,
+                },
             }
         }
     }
@@ -118,11 +164,16 @@ impl KeyPad {
     }
 
     fn arm_moved(&self, key_char: char, arm: Position) -> Option<Position> {
-        let arm_moved = ManhattanDir::try_from(key_char).unwrap().neighbor(arm);
-        self.keys
-            .value(arm_moved)
-            .filter(|v| *v != ' ')
-            .map(|_| arm_moved)
+        match ManhattanDir::try_from(key_char) {
+            Err(_) => None,
+            Ok(dir) => {
+                let arm_moved = dir.neighbor(arm);
+                self.keys
+                    .value(arm_moved)
+                    .filter(|v| *v != ' ')
+                    .map(|_| arm_moved)
+            }
+        }
     }
 
     fn show(&self, arm: Position) -> String {
