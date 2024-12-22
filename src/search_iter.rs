@@ -1,6 +1,5 @@
 use common_macros::hash_map;
 use priority_queue::PriorityQueue;
-use std::cmp::Reverse;
 use std::collections::{HashMap, VecDeque};
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -136,6 +135,12 @@ impl<N: Estimator, T: SearchNode, I: Iterator<Item = T>>
     }
 }
 
+impl<T: SearchNode, I: Iterator<Item = T>> PrioritySearchIter<usize, T, I> {
+    pub fn bfs(start: T, successor: fn(T) -> I) -> Self {
+        Self::dijkstra(start, successor, |_| 1)
+    }
+}
+
 impl<N: Estimator, T: SearchNode, I: Iterator<Item = T>> Iterator
     for PrioritySearchIter<N, T, I>
 {
@@ -145,17 +150,19 @@ impl<N: Estimator, T: SearchNode, I: Iterator<Item = T>> Iterator
         self.queue.pop().map(|(parent, cost)| {
             self.costs.insert(parent.clone(), cost.from_start);
             for child in (self.successor)(parent.clone()) {
-                let new_priority = TotalEstimate::new(cost.from_start + (self.cost)(&child), (self.heuristic)(&child));
-                match self.queue.get_priority(&child) {
-                    Some(priority) => {
-                        if new_priority > *priority {
-                            self.parents.insert(child.clone(), Some(parent.clone()));
-                            self.queue.change_priority(&child, new_priority);
+                if !self.costs.contains_key(&child) {
+                    let new_priority = TotalEstimate::new(cost.from_start + (self.cost)(&child), (self.heuristic)(&child));
+                    match self.queue.get_priority(&child) {
+                        Some(priority) => {
+                            if new_priority > *priority {
+                                self.parents.insert(child.clone(), Some(parent.clone()));
+                                self.queue.change_priority(&child, new_priority);
+                            }
                         }
-                    }
-                    None => {
-                        self.parents.insert(child.clone(), Some(parent.clone()));
-                        self.queue.push(child, new_priority);
+                        None => {
+                            self.parents.insert(child.clone(), Some(parent.clone()));
+                            self.queue.push(child, new_priority);
+                        }
                     }
                 }
             }
@@ -170,7 +177,7 @@ mod tests {
 
     use crate::{
         multidim::{DirType, ManhattanDir, Position},
-        search_iter::{path_back_from, BfsIter},
+        search_iter::{path_back_from, BfsIter, PrioritySearchIter},
     };
 
     #[test]
@@ -183,6 +190,28 @@ mod tests {
             all::<ManhattanDir>()
                 .map(move |d| d.neighbor(n))
                 .filter(|p| start.manhattan_distance(p) <= max_dist)
+        });
+        searcher.by_ref().last();
+        println!("Search complete.");
+        assert_eq!(searcher.parents.len(), 13);
+
+        for node in searcher.parents.keys() {
+            let len = path_back_from(node, &searcher.parents).len();
+            println!("From {:?}: {}", node, len);
+            assert!(len <= 1 + max_dist as usize);
+        }
+    }
+
+    #[test]
+    fn test_priority_bfs() {
+        println!("Test Priority BFS");
+        let max_dist = 2;
+        let start = (Position::default(), Position::default(), max_dist);
+        println!("Starting BFS");
+        let mut searcher = PrioritySearchIter::bfs(start, |n| {
+            all::<ManhattanDir>()
+                .map(move |d| (d.neighbor(n.0), n.1, n.2))
+                .filter(|(p,start,m)| p.manhattan_distance(start) <= *m)
         });
         searcher.by_ref().last();
         println!("Search complete.");
