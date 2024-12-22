@@ -66,7 +66,12 @@ fn path_back_from<T: SearchNode>(node: &T, parents: &HashMap<T, Option<T>>) -> V
     result
 }
 
-pub struct PrioritySearchIter<T: SearchNode, S: Fn(T) -> I, I: Iterator<Item = T>, C: Fn(&T) -> usize> {
+pub struct PrioritySearchIter<
+    T: SearchNode,
+    S: Fn(T) -> I,
+    I: Iterator<Item = T>,
+    C: Fn(&T) -> usize,
+> {
     queue: PriorityQueue<T, Reverse<usize>>,
     costs: HashMap<T, usize>,
     parents: HashMap<T, Option<T>>,
@@ -74,7 +79,9 @@ pub struct PrioritySearchIter<T: SearchNode, S: Fn(T) -> I, I: Iterator<Item = T
     cost: C,
 }
 
-impl<T: SearchNode, S: Fn(T) -> I, I: Iterator<Item = T>, C: Fn(&T) -> usize> PrioritySearchIter<T, S, I, C> {
+impl<T: SearchNode, S: Fn(T) -> I, I: Iterator<Item = T>, C: Fn(&T) -> usize>
+    PrioritySearchIter<T, S, I, C>
+{
     pub fn new(start: T, successor: S, cost: C) -> Self {
         let mut queue = PriorityQueue::new();
         queue.push(start.clone(), Reverse(0));
@@ -83,7 +90,7 @@ impl<T: SearchNode, S: Fn(T) -> I, I: Iterator<Item = T>, C: Fn(&T) -> usize> Pr
             costs: hash_map!(start.clone() => 0),
             successor,
             parents: hash_map!(start.clone() => None),
-            cost
+            cost,
         }
     }
 
@@ -96,7 +103,9 @@ impl<T: SearchNode, S: Fn(T) -> I, I: Iterator<Item = T>, C: Fn(&T) -> usize> Pr
     }
 }
 
-impl<T: SearchNode, S: Fn(T) -> I, I: Iterator<Item = T>, C: Fn(&T) -> usize> Iterator for PrioritySearchIter<T, S, I, C> {
+impl<T: SearchNode, S: Fn(T) -> I, I: Iterator<Item = T>, C: Fn(&T) -> usize> Iterator
+    for PrioritySearchIter<T, S, I, C>
+{
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -118,7 +127,7 @@ impl<T: SearchNode, S: Fn(T) -> I, I: Iterator<Item = T>, C: Fn(&T) -> usize> It
                 }
             }
             parent
-        }) 
+        })
     }
 }
 
