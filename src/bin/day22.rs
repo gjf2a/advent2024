@@ -1,6 +1,7 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use advent2024::{advent_main, all_lines, Part};
+use hash_histogram::HashHistogram;
 use num::Integer;
 
 fn main() -> anyhow::Result<()> {
@@ -56,28 +57,16 @@ fn part1(filename: &str) -> anyhow::Result<()> {
 }
 
 fn part2(filename: &str) -> anyhow::Result<()> {
-    let mut options = HashSet::new();
-    let mut changes2bananas = vec![];
+    let mut options = HashHistogram::new();
     for line in all_lines(filename)? {
         let line = line.parse::<i128>().unwrap();
-        changes2bananas.push(change_banana_map(line, &mut options));
+        update_option_totals(line, &mut options);
     }
-    println!("Candidate options: {}", options.len());
-    let best_total = options
-        .iter()
-        .map(|option| {
-            changes2bananas
-                .iter()
-                .map(|t| t.get(option).unwrap_or(&0))
-                .sum::<i128>()
-        })
-        .max()
-        .unwrap();
-    println!("{best_total}");
+    println!("{:?}", options.ranking_with_counts()[0]);
     Ok(())
 }
 
-fn change_banana_map(line: i128, options: &mut HashSet<Changes>) -> HashMap<Changes, i128> {
+fn update_option_totals(line: i128, options: &mut HashHistogram<Changes>) {
     let mut changes = Changes::default();
     let mut sequence = SecretNumberSequence::new(line).take(2000);
     let mut prev = sequence.by_ref().next().unwrap().mod_floor(&10);
@@ -86,14 +75,15 @@ fn change_banana_map(line: i128, options: &mut HashSet<Changes>) -> HashMap<Chan
         let digit = num.mod_floor(&10);
         changes.add(digit - prev);
         if changes.full() {
-            options.insert(changes);
             if !change_map.contains_key(&changes) {
-                change_map.insert(changes, digit);
+                change_map.insert(changes, digit as usize);
             }
         }
         prev = digit;
     }
-    change_map
+    for (option, value) in change_map.iter() {
+        options.bump_by(option, *value);
+    }
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Default)]
