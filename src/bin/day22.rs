@@ -50,14 +50,12 @@ fn part2(filename: &str) -> anyhow::Result<()> {
     println!("Candidate sequences: {}", sequences.len());
     let best_total = sequences
         .iter()
-        .inspect(|s| print!("{s:?}: "))
         .map(|s| {
             changes2bananas
                 .iter()
                 .map(|t| t.get(s).unwrap_or(&0))
                 .sum::<i128>()
         })
-        .inspect(|n| println!("{n}"))
         .max()
         .unwrap();
     println!("{best_total}");
