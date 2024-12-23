@@ -4,6 +4,7 @@ use advent2024::{
     advent_main,
     grid::GridCharWorld,
     multidim::{DirType, ManhattanDir, Position},
+    search_iter::PrioritySearchIter,
     searchers::{breadth_first_search, ContinueSearch, SearchQueue},
     Part,
 };
@@ -16,6 +17,9 @@ const TURN_COST: isize = 1000;
 
 fn main() -> anyhow::Result<()> {
     advent_main(|filename, part, options| {
+        if options.contains(&"-alt") {
+            alt(filename, part)?;
+        }
         let table = ReindeerPathTable::new(GridCharWorld::from_char_file(filename)?);
         match part {
             Part::One => part1(table),
@@ -23,6 +27,34 @@ fn main() -> anyhow::Result<()> {
         }
         Ok(())
     })
+}
+
+fn alt(filename: &str, part: Part) -> anyhow::Result<()> {
+    match part {
+        Part::One => {
+            let maze = GridCharWorld::from_char_file(filename)?;
+            let start = Reindeer::new(maze.any_position_for('S'), ManhattanDir::E);
+            let end = maze.any_position_for('E');
+            let mut searcher = PrioritySearchIter::dijkstra(start, |s| {
+                [
+                    (s.forward(), MOVE_COST as usize),
+                    (s.left(), TURN_COST as usize),
+                    (s.right(), TURN_COST as usize),
+                ]
+                .iter()
+                .filter(|(p, _)| maze.value(p.p).map_or(false, |v| v != '#'))
+                .copied()
+                .collect()
+            });
+            let at_goal = searcher.find(|r| r.p == end).unwrap();
+            let score = searcher.cost_for(&at_goal);
+            println!("{score}");
+        }
+        Part::Two => {
+            todo!();
+        }
+    }
+    Ok(())
 }
 
 fn part1(mut table: ReindeerPathTable) {
@@ -184,17 +216,23 @@ impl Reindeer {
         Self::new(p, self.f)
     }
 
+    fn forward(&self) -> Self {
+        self.with_position(self.f.neighbor(self.p))
+    }
+
+    fn left(&self) -> Self {
+        self.with_facing(self.f.counterclockwise())
+    }
+
+    fn right(&self) -> Self {
+        self.with_facing(self.f.clockwise())
+    }
+
     fn futures(&self, score: isize) -> Vec<(Reindeer, isize)> {
         vec![
-            (
-                self.with_position(self.f.neighbor(self.p)),
-                score + MOVE_COST,
-            ),
-            (self.with_facing(self.f.clockwise()), score + TURN_COST),
-            (
-                self.with_facing(self.f.counterclockwise()),
-                score + TURN_COST,
-            ),
+            (self.forward(), score + MOVE_COST),
+            (self.left(), score + TURN_COST),
+            (self.right(), score + TURN_COST),
         ]
     }
 }
