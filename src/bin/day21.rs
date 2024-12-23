@@ -1,4 +1,7 @@
-use advent2024::{advent_main, grid::GridCharWorld, multidim::Position};
+use std::collections::HashMap;
+
+use advent2024::{advent_main, grid::GridCharWorld, multidim::Position, search_iter::BfsIter};
+use common_macros::hash_map;
 
 const NUMERIC_PAD: &str = "789
 456
@@ -8,7 +11,8 @@ const NUMERIC_PAD: &str = "789
 const DIRECTION_PAD: &str = " ^A
 <v>";
 
-const LEVELS: usize = 4;
+const NUM_ROBOTS: usize = 3;
+const NUM_TABLES: usize = NUM_ROBOTS - 1;
 
 fn main() -> anyhow::Result<()> {
     advent_main(|filename, part, _| {
@@ -20,19 +24,48 @@ fn main() -> anyhow::Result<()> {
 }
 
 struct Robots {
-    keypads: [GridCharWorld; LEVELS],
-    
+    keypads: [GridCharWorld; NUM_ROBOTS],
+    presses_needed_for: [HashMap<(Position,Position), usize>; NUM_TABLES]
 }
 
 impl Robots {
     fn new() -> Self {
+        let keypads = [
+            DIRECTION_PAD.parse::<GridCharWorld>().unwrap(), 
+            DIRECTION_PAD.parse::<GridCharWorld>().unwrap(), 
+            NUMERIC_PAD.parse::<GridCharWorld>().unwrap(),
+        ];
+        let zero2one = hash_map!(
+            ('A', 'A') => 1,
+            ('A', '^') => 2,
+            ('A', '>') => 2,
+            ('A', 'v') => 3,
+            ('A', '<') => 4,
+            ('^', '^') => 1,
+            ('^', '>') => 3,
+            ('^', 'v') => 2,
+            ('^', '<') => 3,
+            ('>', '>') => 1,
+            ('>', 'v') => 2,
+            ('>', '<') => 3,
+            ('<', '<') => 1,
+            ('<', 'v') => 2,
+            ('v', 'v') => 1,
+        );
+        let one2two = hash_map!(
+            (('A', 'A'), 'A') => 1,
+            (('^', 'A'), 'A') => 2,            
+        );
+        let arms = keypads.clone().map(|p| p.any_position_for('A'));
+        let starting_arms = Arms {arms};
+        let mut tables = [HashMap::new(), HashMap::new()];
+        BfsIter::new(start, successor)
+        for start in 0..tables.len() {
+
+        }
         Self {
-            keypads: [
-                DIRECTION_PAD.parse::<GridCharWorld>().unwrap(), 
-                DIRECTION_PAD.parse::<GridCharWorld>().unwrap(), 
-                DIRECTION_PAD.parse::<GridCharWorld>().unwrap(), 
-                NUMERIC_PAD.parse::<GridCharWorld>().unwrap(),
-                ]
+            keypads,
+            presses_needed_for: tables
         }
     }
 
@@ -68,14 +101,14 @@ struct ArmMove {
     button: char,
 }
 
-#[derive(Clone, Hash, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
 struct Arms {
-    arms: [Position; LEVELS],
+    arms: [Position; NUM_ROBOTS],
 }
 
 struct MoveToIterator {
     robots: Robots,
-    level_goals: [char; LEVELS],
+    level_goals: [char; NUM_ROBOTS],
     current_level: usize,
     state: Option<Arms>,
 }
@@ -84,7 +117,7 @@ impl MoveToIterator {
     fn new(goal: char, arms: &Arms) -> Self {
         Self {
             robots: Robots::new(),
-            level_goals: ['A', 'A', 'A', goal],
+            level_goals: ['A', 'A', goal],
             current_level: 3,
             state: Some(arms.clone()),
         }
