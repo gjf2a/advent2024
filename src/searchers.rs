@@ -1,9 +1,8 @@
-use common_macros::b_tree_set;
 use derive_getters::Getters;
 use indexmap::IndexMap;
 use num::Num;
 use std::cmp::Ordering;
-use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, VecDeque};
+use std::collections::{BinaryHeap, HashMap, VecDeque};
 use std::fmt::{Debug, Display};
 use std::hash::Hash;
 use std::ops::Add;
@@ -423,44 +422,6 @@ pub fn path_back_from<T: SearchNode>(
                     current = parent;
                 }
             },
-        }
-    }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct AdjacencySets {
-    graph: BTreeMap<String, BTreeSet<String>>,
-}
-
-impl AdjacencySets {
-    pub fn new() -> Self {
-        AdjacencySets {
-            graph: BTreeMap::new(),
-        }
-    }
-
-    pub fn keys(&self) -> impl Iterator<Item = &str> {
-        self.graph.keys().map(|s| s.as_str())
-    }
-
-    pub fn neighbors_of(&self, node: &str) -> Option<&BTreeSet<String>> {
-        self.graph.get(node)
-    }
-
-    pub fn connect2(&mut self, start: &str, end: &str) {
-        self.connect(start, end);
-        self.connect(end, start);
-    }
-
-    pub fn connect(&mut self, start: &str, end: &str) {
-        match self.graph.get_mut(start) {
-            None => {
-                self.graph
-                    .insert(start.to_string(), b_tree_set! {end.to_string()});
-            }
-            Some(connections) => {
-                connections.insert(end.to_string());
-            }
         }
     }
 }

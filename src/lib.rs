@@ -1,5 +1,6 @@
 pub mod combinations;
 pub mod extended_euclid;
+pub mod graph;
 pub mod grid;
 pub mod multidim;
 pub mod search_iter;
@@ -100,7 +101,7 @@ mod tests {
     use crate::{
         log_floor,
         multidim::{Dir, DirType, ManhattanDir, Position, RowMajorPositionIterator},
-        searchers::{breadth_first_search, AdjacencySets, ContinueSearch, SearchQueue},
+        searchers::{breadth_first_search, ContinueSearch, SearchQueue},
     };
 
     #[test]
@@ -198,40 +199,6 @@ mod tests {
             println!("From {:?}: {}", node, len);
             assert!(len <= 1 + max_dist as usize);
         }
-    }
-
-    #[test]
-    fn graph_test() {
-        let mut graph = AdjacencySets::new();
-        for (a, b) in [
-            ("start", "A"),
-            ("start", "b"),
-            ("A", "c"),
-            ("A", "b"),
-            ("b", "d"),
-            ("A", "end"),
-            ("b", "end"),
-        ] {
-            graph.connect2(a, b);
-        }
-        let keys = graph.keys().collect::<Vec<_>>();
-        assert_eq!(keys, vec!["A", "b", "c", "d", "end", "start"]);
-        let parent_map = breadth_first_search(&"start".to_string(), |node, q| {
-            graph
-                .neighbors_of(node)
-                .unwrap()
-                .iter()
-                .for_each(|n| q.enqueue(n));
-            ContinueSearch::Yes
-        });
-        let parent_map_str = format!("{:?}", parent_map);
-        assert_eq!(
-            parent_map_str.as_str(),
-            r#"ParentMap { parents: {"start": None, "A": Some("start"), "b": Some("start"), "c": Some("A"), "end": Some("A"), "d": Some("b")}, last_dequeued: Some("d") }"#
-        );
-        let path = parent_map.path_back_from(&"end".to_string()).unwrap();
-        let path_str = format!("{:?}", path);
-        assert_eq!(path_str, r#"["start", "A", "end"]"#);
     }
 
     #[test]
