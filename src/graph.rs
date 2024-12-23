@@ -5,20 +5,23 @@ use std::{
 
 use common_macros::b_tree_set;
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Default)]
 pub struct AdjacencySets {
     graph: BTreeMap<String, BTreeSet<String>>,
+    num_edges: usize,
 }
 
 impl AdjacencySets {
-    pub fn new() -> Self {
-        AdjacencySets {
-            graph: BTreeMap::new(),
-        }
-    }
-
     pub fn keys(&self) -> impl Iterator<Item = &str> {
         self.graph.keys().map(|s| s.as_str())
+    }
+
+    pub fn len(&self) -> usize {
+        self.graph.len()
+    }
+
+    pub fn num_edges(&self) -> usize {
+        self.num_edges
     }
 
     pub fn pairs(&self) -> impl Iterator<Item = (&str, &str)> {
@@ -52,9 +55,14 @@ impl AdjacencySets {
             None => {
                 self.graph
                     .insert(start.to_string(), b_tree_set! {end.to_string()});
+                self.num_edges += 1;
             }
             Some(connections) => {
+                let before = connections.len();
                 connections.insert(end.to_string());
+                if connections.len() > before {
+                    self.num_edges += 1;
+                }
             }
         }
     }
@@ -66,40 +74,40 @@ mod tests {
         graph::AdjacencySets,
         searchers::{breadth_first_search, ContinueSearch, SearchQueue},
     };
-/* 
-    #[test]
-    fn graph_test() {
-        let mut graph = AdjacencySets::new();
-        for (a, b) in [
-            ("start", "A"),
-            ("start", "b"),
-            ("A", "c"),
-            ("A", "b"),
-            ("b", "d"),
-            ("A", "end"),
-            ("b", "end"),
-        ] {
-            graph.connect2(a, b);
-        }
-        let keys = graph.keys().collect::<Vec<_>>();
-        assert_eq!(keys, vec!["A", "b", "c", "d", "end", "start"]);
+    /*
+        #[test]
+        fn graph_test() {
+            let mut graph = AdjacencySets::new();
+            for (a, b) in [
+                ("start", "A"),
+                ("start", "b"),
+                ("A", "c"),
+                ("A", "b"),
+                ("b", "d"),
+                ("A", "end"),
+                ("b", "end"),
+            ] {
+                graph.connect2(a, b);
+            }
+            let keys = graph.keys().collect::<Vec<_>>();
+            assert_eq!(keys, vec!["A", "b", "c", "d", "end", "start"]);
 
-        let parent_map = breadth_first_search("start", |node, q| {
-            graph
-                .neighbors_of(node)
-                .for_each(|n| q.enqueue(n));
-            ContinueSearch::Yes
-        });
-        let parent_map_str = format!("{:?}", parent_map);
-        assert_eq!(
-            parent_map_str.as_str(),
-            r#"ParentMap { parents: {"start": None, "A": Some("start"), "b": Some("start"), "c": Some("A"), "end": Some("A"), "d": Some("b")}, last_dequeued: Some("d") }"#
-        );
-        let path = parent_map.path_back_from(&"end".to_string()).unwrap();
-        let path_str = format!("{:?}", path);
-        assert_eq!(path_str, r#"["start", "A", "end"]"#);
-    }
-*/
+            let parent_map = breadth_first_search("start", |node, q| {
+                graph
+                    .neighbors_of(node)
+                    .for_each(|n| q.enqueue(n));
+                ContinueSearch::Yes
+            });
+            let parent_map_str = format!("{:?}", parent_map);
+            assert_eq!(
+                parent_map_str.as_str(),
+                r#"ParentMap { parents: {"start": None, "A": Some("start"), "b": Some("start"), "c": Some("A"), "end": Some("A"), "d": Some("b")}, last_dequeued: Some("d") }"#
+            );
+            let path = parent_map.path_back_from(&"end".to_string()).unwrap();
+            let path_str = format!("{:?}", path);
+            assert_eq!(path_str, r#"["start", "A", "end"]"#);
+        }
+    */
     #[test]
     fn test_pair_iter() {
         let mut graph = AdjacencySets::new();
