@@ -24,6 +24,7 @@ fn main() -> anyhow::Result<()> {
                     ['<', '>', 'v', '^', 'A']
                         .iter()
                         .filter_map(move |c| chain.moved_arms(*c, &current))
+                        .collect()
                 });
                 match searcher.find(|arms| arms.output_matches(code.as_str())) {
                     Some(found) => {
