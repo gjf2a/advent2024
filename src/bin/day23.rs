@@ -17,6 +17,11 @@ fn main() -> anyhow::Result<()> {
             println!("edges: {}", graph.num_edges());
         }
 
+        if options.contains(&"-total") {
+            let three_cliques = clique3(&graph).iter().count();
+            println!("Total 3-cliques: {three_cliques}");
+        }
+
         match part {
             Part::One => {
                 let t_cliques = clique3(&graph)
