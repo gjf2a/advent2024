@@ -62,7 +62,7 @@ fn part2<S: FnMut(&Reindeer) -> Vec<(Reindeer, usize)>, H: Fn(&Reindeer) -> usiz
         on_path.insert(*p);
         let outgoing_dirs = all::<ManhattanDir>()
             .filter(|d| on_path.contains(&d.neighbor(*p)))
-            .collect::<Vec<_>>();
+            .collect_vec();
         let candidates = all::<ManhattanDir>()
             .map(|d| Reindeer::new(d.neighbor(*p), d.inverse()))
             .filter(|r| maze.value(r.p).map_or(false, |v| v != '#'))
