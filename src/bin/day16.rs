@@ -70,11 +70,12 @@ fn part2<S: FnMut(&Reindeer) -> Vec<(Reindeer, usize)>, H: Fn(&Reindeer) -> usiz
         let costs = candidates
             .iter()
             .map(|r| {
-                let mut cost = searcher.cost_for(r);
-                if !outgoing_dirs.contains(&r.f) {
-                    cost += TURN_COST as usize;
-                }
-                cost
+                searcher.cost_for(r)
+                    + if outgoing_dirs.contains(&r.f) {
+                        0
+                    } else {
+                        TURN_COST
+                    }
             })
             .collect_vec();
         let min_cost = costs.iter().min().unwrap();
