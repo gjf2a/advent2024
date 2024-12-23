@@ -14,7 +14,7 @@ fn main() -> anyhow::Result<()> {
 
         if options.contains(&"-size") {
             println!("nodes: {}", graph.len());
-            println!("edges: {}", graph.num_edges());
+            println!("edges: {}", graph.num_symmetric_edges());
         }
 
         if options.contains(&"-total") {
