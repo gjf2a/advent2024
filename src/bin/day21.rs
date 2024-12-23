@@ -54,7 +54,9 @@ impl Robots {
         );
         let one2two = hash_map!(
             (('A', 'A'), 'A') => 1,
-            (('^', 'A'), 'A') => 2,            
+            (('^', 'A'), 'A') => 2,     
+            (('A', '^'), 'A') => 2,
+            (('^', '^'), 'A') => 3,       
         );
         let arms = keypads.clone().map(|p| p.any_position_for('A'));
         let starting_arms = Arms {arms};
