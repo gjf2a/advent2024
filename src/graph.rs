@@ -70,47 +70,40 @@ impl AdjacencySets {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        graph::AdjacencySets,
-        searchers::{breadth_first_search, ContinueSearch, SearchQueue},
-    };
-    /*
-        #[test]
-        fn graph_test() {
-            let mut graph = AdjacencySets::new();
-            for (a, b) in [
-                ("start", "A"),
-                ("start", "b"),
-                ("A", "c"),
-                ("A", "b"),
-                ("b", "d"),
-                ("A", "end"),
-                ("b", "end"),
-            ] {
-                graph.connect2(a, b);
-            }
-            let keys = graph.keys().collect::<Vec<_>>();
-            assert_eq!(keys, vec!["A", "b", "c", "d", "end", "start"]);
+    use itertools::Itertools;
 
-            let parent_map = breadth_first_search("start", |node, q| {
-                graph
-                    .neighbors_of(node)
-                    .for_each(|n| q.enqueue(n));
-                ContinueSearch::Yes
-            });
-            let parent_map_str = format!("{:?}", parent_map);
-            assert_eq!(
-                parent_map_str.as_str(),
-                r#"ParentMap { parents: {"start": None, "A": Some("start"), "b": Some("start"), "c": Some("A"), "end": Some("A"), "d": Some("b")}, last_dequeued: Some("d") }"#
-            );
-            let path = parent_map.path_back_from(&"end".to_string()).unwrap();
-            let path_str = format!("{:?}", path);
-            assert_eq!(path_str, r#"["start", "A", "end"]"#);
+    use crate::{
+        graph::AdjacencySets, search_iter::BfsIter
+    };
+    
+    #[test]
+    fn graph_test() {
+        let mut graph = AdjacencySets::default();
+        for (a, b) in [
+            ("start", "A"),
+            ("start", "b"),
+            ("A", "c"),
+            ("A", "b"),
+            ("b", "d"),
+            ("A", "end"),
+            ("b", "end"),
+        ] {
+            graph.connect2(a, b);
         }
-    */
+        let keys = graph.keys().collect::<Vec<_>>();
+        assert_eq!(keys, vec!["A", "b", "c", "d", "end", "start"]);
+        let mut searcher = BfsIter::new("start", |s| graph.neighbors_of(s).collect());
+        let found = searcher.by_ref().collect_vec();
+        println!("{found:?}");
+
+        let path = searcher.path_back_from(&"end");
+        let path_str = format!("{:?}", path);
+        assert_eq!(path_str, r#"["end", "A", "start"]"#);
+    }
+    
     #[test]
     fn test_pair_iter() {
-        let mut graph = AdjacencySets::new();
+        let mut graph = AdjacencySets::default();
         for (a, b) in [
             ("start", "A"),
             ("start", "b"),
@@ -123,8 +116,7 @@ mod tests {
             graph.connect2(a, b);
         }
 
-        for (k, v) in graph.pairs() {
-            println!("{k} {v}");
-        }
+        let pair_str = format!("{:?}", graph.pairs().collect_vec());
+        assert_eq!(pair_str.as_str(), r#"[("A", "b"), ("A", "c"), ("A", "end"), ("A", "start"), ("b", "A"), ("b", "d"), ("b", "end"), ("b", "start"), ("c", "A"), ("d", "b"), ("end", "A"), ("end", "b"), ("start", "A"), ("start", "b")]"#);
     }
 }
