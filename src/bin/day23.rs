@@ -19,14 +19,19 @@ fn main() -> anyhow::Result<()> {
 
         match part {
             Part::One => {
-                let t_cliques = clique3(&graph).iter().filter(|c| c.iter().any(|s| s.starts_with("t"))).count();
+                let t_cliques = clique3(&graph)
+                    .iter()
+                    .filter(|c| c.iter().any(|s| s.starts_with("t")))
+                    .count();
                 println!("{t_cliques}");
             }
             Part::Two => {
                 let mut biggest: Option<BTreeSet<&str>> = None;
                 for mut clique in clique3(&graph) {
                     for node in graph.keys() {
-                        if !clique.contains(node) && clique.iter().all(|cn| graph.are_connected(*&cn, node)) {
+                        if !clique.contains(node)
+                            && clique.iter().all(|cn| graph.are_connected(*&cn, node))
+                        {
                             clique.insert(node);
                         }
                     }
