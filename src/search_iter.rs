@@ -11,14 +11,14 @@ trait_set! {
     pub trait SearchNode = Clone + Hash + Eq + Debug;
 }
 
-pub struct BfsIter<T: SearchNode, S: Fn(&T) -> Vec<T>> {
+pub struct BfsIter<T: SearchNode, S: FnMut(&T) -> Vec<T>> {
     queue: VecDeque<(T, usize)>,
     depths: HashMap<T, usize>,
     parents: HashMap<T, Option<T>>,
     successor: S,
 }
 
-impl<T: SearchNode, S: Fn(&T) -> Vec<T>> BfsIter<T, S> {
+impl<T: SearchNode, S: FnMut(&T) -> Vec<T>> BfsIter<T, S> {
     pub fn new(start: T, successor: S) -> Self {
         let mut queue = VecDeque::new();
         queue.push_back((start.clone(), 0));
@@ -39,7 +39,7 @@ impl<T: SearchNode, S: Fn(&T) -> Vec<T>> BfsIter<T, S> {
     }
 }
 
-impl<T: SearchNode, S: Fn(&T) -> Vec<T>> Iterator for BfsIter<T, S> {
+impl<T: SearchNode, S: FnMut(&T) -> Vec<T>> Iterator for BfsIter<T, S> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -96,7 +96,7 @@ impl<N: Estimator> PartialOrd for TotalEstimate<N> {
     }
 }
 
-pub struct PrioritySearchIter<N: Estimator, T: SearchNode, S: Fn(&T) -> Vec<(T, N)>, H: Fn(&T) -> N>
+pub struct PrioritySearchIter<N: Estimator, T: SearchNode, S: FnMut(&T) -> Vec<(T, N)>, H: Fn(&T) -> N>
 {
     queue: PriorityQueue<T, TotalEstimate<N>>,
     costs: HashMap<T, N>,
@@ -105,7 +105,7 @@ pub struct PrioritySearchIter<N: Estimator, T: SearchNode, S: Fn(&T) -> Vec<(T, 
     heuristic: H,
 }
 
-impl<N: Estimator, T: SearchNode, S: Fn(&T) -> Vec<(T, N)>, H: Fn(&T) -> N>
+impl<N: Estimator, T: SearchNode, S: FnMut(&T) -> Vec<(T, N)>, H: Fn(&T) -> N>
     PrioritySearchIter<N, T, S, H>
 {
     pub fn a_star(start: T, successor: S, heuristic: H) -> Self {
@@ -129,7 +129,7 @@ impl<N: Estimator, T: SearchNode, S: Fn(&T) -> Vec<(T, N)>, H: Fn(&T) -> N>
     }
 }
 
-impl<N: Estimator, T: SearchNode, S: Fn(&T) -> Vec<(T, N)>>
+impl<N: Estimator, T: SearchNode, S: FnMut(&T) -> Vec<(T, N)>>
     PrioritySearchIter<N, T, S, fn(&T) -> N>
 {
     pub fn dijkstra(start: T, successor: S) -> Self {
@@ -137,7 +137,7 @@ impl<N: Estimator, T: SearchNode, S: Fn(&T) -> Vec<(T, N)>>
     }
 }
 
-impl<N: Estimator, T: SearchNode, S: Fn(&T) -> Vec<(T, N)>, H: Fn(&T) -> N> Iterator
+impl<N: Estimator, T: SearchNode, S: FnMut(&T) -> Vec<(T, N)>, H: Fn(&T) -> N> Iterator
     for PrioritySearchIter<N, T, S, H>
 {
     type Item = T;
