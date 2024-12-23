@@ -78,9 +78,9 @@ struct TotalEstimate<N: Estimator> {
 }
 
 impl<N: Estimator> TotalEstimate<N> {
-    fn new(from_start: N, estimate_to_goal: N) -> Self {
+    fn next_cost(&self, step_cost: N, estimate_to_goal: N) -> Self {
         Self {
-            from_start,
+            from_start: self.from_start + step_cost,
             estimate_to_goal,
         }
     }
@@ -96,7 +96,8 @@ impl<N: Estimator> PartialOrd for TotalEstimate<N> {
     }
 }
 
-pub struct PrioritySearchIter<N: Estimator, T: SearchNode, S: Fn(&T) -> Vec<(T,N)>, H: Fn(&T) -> N> {
+pub struct PrioritySearchIter<N: Estimator, T: SearchNode, S: Fn(&T) -> Vec<(T, N)>, H: Fn(&T) -> N>
+{
     queue: PriorityQueue<T, TotalEstimate<N>>,
     costs: HashMap<T, N>,
     parents: HashMap<T, Option<T>>,
@@ -104,7 +105,7 @@ pub struct PrioritySearchIter<N: Estimator, T: SearchNode, S: Fn(&T) -> Vec<(T,N
     heuristic: H,
 }
 
-impl<N: Estimator, T: SearchNode, S: Fn(&T) -> Vec<(T,N)>, H: Fn(&T) -> N>
+impl<N: Estimator, T: SearchNode, S: Fn(&T) -> Vec<(T, N)>, H: Fn(&T) -> N>
     PrioritySearchIter<N, T, S, H>
 {
     pub fn a_star(start: T, successor: S, heuristic: H) -> Self {
@@ -128,13 +129,15 @@ impl<N: Estimator, T: SearchNode, S: Fn(&T) -> Vec<(T,N)>, H: Fn(&T) -> N>
     }
 }
 
-impl<N: Estimator, T: SearchNode, S: Fn(&T) -> Vec<(T,N)>> PrioritySearchIter<N, T, S, fn(&T) -> N> {
+impl<N: Estimator, T: SearchNode, S: Fn(&T) -> Vec<(T, N)>>
+    PrioritySearchIter<N, T, S, fn(&T) -> N>
+{
     pub fn dijkstra(start: T, successor: S) -> Self {
         Self::a_star(start, successor, |_| N::zero())
     }
 }
 
-impl<N: Estimator, T: SearchNode, S: Fn(&T) -> Vec<(T,N)>, H: Fn(&T) -> N> Iterator
+impl<N: Estimator, T: SearchNode, S: Fn(&T) -> Vec<(T, N)>, H: Fn(&T) -> N> Iterator
     for PrioritySearchIter<N, T, S, H>
 {
     type Item = T;
@@ -142,12 +145,9 @@ impl<N: Estimator, T: SearchNode, S: Fn(&T) -> Vec<(T,N)>, H: Fn(&T) -> N> Itera
     fn next(&mut self) -> Option<Self::Item> {
         self.queue.pop().map(|(parent, cost)| {
             self.costs.insert(parent.clone(), cost.from_start);
-            for (child, child_cost) in (self.successor)(&parent) {
+            for (child, step_cost) in (self.successor)(&parent) {
                 if !self.costs.contains_key(&child) {
-                    let new_priority = TotalEstimate::new(
-                        cost.from_start + child_cost,
-                        (self.heuristic)(&child),
-                    );
+                    let new_priority = cost.next_cost(step_cost, (self.heuristic)(&child));
                     match self.queue.get_priority(&child) {
                         Some(priority) => {
                             if new_priority > *priority {
@@ -186,7 +186,8 @@ mod tests {
         let mut searcher = BfsIter::new(start, |n| {
             all::<ManhattanDir>()
                 .map(move |d| d.neighbor(*n))
-                .filter(|p| start.manhattan_distance(p) <= max_dist).collect()
+                .filter(|p| start.manhattan_distance(p) <= max_dist)
+                .collect()
         });
         searcher.by_ref().last();
         println!("Search complete.");
@@ -249,10 +250,7 @@ mod tests {
             },
             |p| exit.manhattan_distance(p),
         );
-        let result = searcher
-            .by_ref()
-            .find(|p| *p == exit)
-            .unwrap();
+        let result = searcher.by_ref().find(|p| *p == exit).unwrap();
         assert_eq!(result, exit);
         let path = searcher.path_back_from(&result);
         println!("{path:?}");
