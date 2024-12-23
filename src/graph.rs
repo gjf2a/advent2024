@@ -8,7 +8,6 @@ use common_macros::b_tree_set;
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
 pub struct AdjacencySets {
     graph: BTreeMap<String, BTreeSet<String>>,
-    num_edges: usize,
 }
 
 impl AdjacencySets {
@@ -21,7 +20,18 @@ impl AdjacencySets {
     }
 
     pub fn num_edges(&self) -> usize {
-        self.num_edges
+        self.pairs().count()
+    }
+
+    pub fn num_symmetric_edges(&self) -> usize {
+        self.pairs()
+            .map(|(a, b)| if a < b { (a, b) } else { (b, a) })
+            .collect::<BTreeSet<_>>()
+            .len()
+    }
+
+    pub fn is_directed(&self) -> bool {
+        self.num_symmetric_edges() * 2 != self.num_edges()
     }
 
     pub fn pairs(&self) -> impl Iterator<Item = (&str, &str)> {
@@ -55,14 +65,9 @@ impl AdjacencySets {
             None => {
                 self.graph
                     .insert(start.to_string(), b_tree_set! {end.to_string()});
-                self.num_edges += 1;
             }
             Some(connections) => {
-                let before = connections.len();
                 connections.insert(end.to_string());
-                if connections.len() > before {
-                    self.num_edges += 1;
-                }
             }
         }
     }
@@ -72,10 +77,11 @@ impl AdjacencySets {
 mod tests {
     use itertools::Itertools;
 
-    use crate::{
-        graph::AdjacencySets, search_iter::BfsIter
-    };
-    
+    use crate::{graph::AdjacencySets, search_iter::BfsIter};
+
+    // TODO: Need more tests for the following:
+    // * Directed graph example
+
     #[test]
     fn graph_test() {
         let mut graph = AdjacencySets::default();
@@ -90,17 +96,21 @@ mod tests {
         ] {
             graph.connect2(a, b);
         }
+        assert_eq!(graph.num_edges(), 14);
+        assert_eq!(graph.num_symmetric_edges(), 7);
+        assert!(!graph.is_directed());
+
         let keys = graph.keys().collect::<Vec<_>>();
         assert_eq!(keys, vec!["A", "b", "c", "d", "end", "start"]);
         let mut searcher = BfsIter::new("start", |s| graph.neighbors_of(s).collect());
         let found = searcher.by_ref().collect_vec();
-        println!("{found:?}");
+        assert_eq!(found, vec!["start", "A", "b", "c", "end", "d"]);
 
         let path = searcher.path_back_from(&"end");
         let path_str = format!("{:?}", path);
         assert_eq!(path_str, r#"["end", "A", "start"]"#);
     }
-    
+
     #[test]
     fn test_pair_iter() {
         let mut graph = AdjacencySets::default();
@@ -117,6 +127,9 @@ mod tests {
         }
 
         let pair_str = format!("{:?}", graph.pairs().collect_vec());
-        assert_eq!(pair_str.as_str(), r#"[("A", "b"), ("A", "c"), ("A", "end"), ("A", "start"), ("b", "A"), ("b", "d"), ("b", "end"), ("b", "start"), ("c", "A"), ("d", "b"), ("end", "A"), ("end", "b"), ("start", "A"), ("start", "b")]"#);
+        assert_eq!(
+            pair_str.as_str(),
+            r#"[("A", "b"), ("A", "c"), ("A", "end"), ("A", "start"), ("b", "A"), ("b", "d"), ("b", "end"), ("b", "start"), ("c", "A"), ("d", "b"), ("end", "A"), ("end", "b"), ("start", "A"), ("start", "b")]"#
+        );
     }
 }
