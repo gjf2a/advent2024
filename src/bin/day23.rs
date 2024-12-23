@@ -26,20 +26,8 @@ fn main() -> anyhow::Result<()> {
                 println!("{t_cliques}");
             }
             Part::Two => {
-                let mut biggest: Option<BTreeSet<&str>> = None;
-                for mut clique in clique3(&graph) {
-                    for node in graph.keys() {
-                        if !clique.contains(node)
-                            && clique.iter().all(|cn| graph.are_connected(*&cn, node))
-                        {
-                            clique.insert(node);
-                        }
-                    }
-                    if biggest.as_ref().map_or(true, |b| clique.len() > b.len()) {
-                        biggest = Some(clique);
-                    }
-                }
-                let result = biggest.unwrap().iter().join(",");
+                let biggest = biggest_clique(&graph);
+                let result = biggest.iter().join(",");
                 println!("{result}");
             }
         }
@@ -55,4 +43,19 @@ fn clique3(graph: &AdjacencySets) -> BTreeSet<BTreeSet<&str>> {
         }
     }
     result
+}
+
+fn biggest_clique(graph: &AdjacencySets) -> BTreeSet<&str> {
+    let mut biggest: Option<BTreeSet<&str>> = None;
+    for mut clique in clique3(&graph) {
+        for node in graph.keys() {
+            if !clique.contains(node) && clique.iter().all(|cn| graph.are_connected(*&cn, node)) {
+                clique.insert(node);
+            }
+        }
+        if biggest.as_ref().map_or(true, |b| clique.len() > b.len()) {
+            biggest = Some(clique);
+        }
+    }
+    biggest.unwrap()
 }
