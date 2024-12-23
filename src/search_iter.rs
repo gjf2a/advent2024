@@ -96,8 +96,12 @@ impl<N: Estimator> PartialOrd for TotalEstimate<N> {
     }
 }
 
-pub struct PrioritySearchIter<N: Estimator, T: SearchNode, S: FnMut(&T) -> Vec<(T, N)>, H: Fn(&T) -> N>
-{
+pub struct PrioritySearchIter<
+    N: Estimator,
+    T: SearchNode,
+    S: FnMut(&T) -> Vec<(T, N)>,
+    H: Fn(&T) -> N,
+> {
     queue: PriorityQueue<T, TotalEstimate<N>>,
     costs: HashMap<T, N>,
     parents: HashMap<T, Option<T>>,
