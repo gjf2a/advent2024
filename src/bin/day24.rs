@@ -513,7 +513,7 @@ fn swap_every_pair(circuit: Circuit) {
             let o2 = all_ancestors[j].output();
             let alternative = circuit.swapped_outputs_for(o1, o2);
             if let Some(swapped_zs) = alternative.bad_zs() {
-                if swapped_zs.len() < bad_zs.len() {
+                if swapped_zs.iter().all(|z| bad_zs.contains(z)) && swapped_zs.len() < bad_zs.len() {
                     let improvement = bad_zs.len() - swapped_zs.len();
                     improvements.bump(&improvement);
                     options.push((improvement, o1, o2));
