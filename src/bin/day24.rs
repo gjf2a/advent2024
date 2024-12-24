@@ -8,7 +8,7 @@ fn main() -> anyhow::Result<()> {
     advent_main(|filename, part, _| {
         println!("{filename} {part:?}");
         let mut circuit = Circuit::from_file(filename)?;
-        println!("{}", circuit.run());
+        println!("{}", circuit.part1());
         Ok(())
     })
 }
@@ -28,22 +28,30 @@ impl Circuit {
         }
 
         let pending = lines.map(|line| line.parse::<Gate>().unwrap()).collect();
-        Ok(Self {values, pending})
+        Ok(Self { values, pending })
     }
 
-    fn run(&mut self) -> u128 {
-        while !self.pending.is_empty() {
-            let mut new_pending = self.pending.iter().filter_map(|gate| gate.apply(&mut self.values)).collect();
-            std::mem::swap(&mut self.pending, &mut new_pending);
-        }
-        
-        self.values.iter()
+    fn extract_num_with(&self, prefix: &str) -> u128 {
+        self.values
+            .iter()
             .rev()
-            .filter(|(n,_)| n.starts_with("z"))
-            .inspect(|(n, v)| println!("{n} {v}"))
-            .map(|(_,v)| *v)
+            .filter(|(n, _)| n.starts_with(prefix))
+            .map(|(_, v)| *v)
             .reduce(|a, b| a * 2 + b)
             .unwrap()
+    }
+
+    fn part1(&mut self) -> u128 {
+        while !self.pending.is_empty() {
+            let mut new_pending = self
+                .pending
+                .iter()
+                .filter_map(|gate| gate.apply(&mut self.values))
+                .collect();
+            std::mem::swap(&mut self.pending, &mut new_pending);
+        }
+
+        self.extract_num_with("z")
     }
 }
 
@@ -85,9 +93,11 @@ impl Gate {
     }
 
     fn apply(&self, values: &mut BTreeMap<String, u128>) -> Option<Self> {
-        self.ops(values).map(|(a, b, c)| {
-            values.insert(c, self.eval(a, b));
-        }).map_or(Some(self.clone()), |_| None)
+        self.ops(values)
+            .map(|(a, b, c)| {
+                values.insert(c, self.eval(a, b));
+            })
+            .map_or(Some(self.clone()), |_| None)
     }
 }
 
@@ -96,12 +106,16 @@ impl FromStr for Gate {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let (a, op, b, _, c) = s.split_whitespace().collect_tuple().unwrap();
-        let args = Args {a: a.to_string(), b: b.to_string(), c: c.to_string()};
+        let args = Args {
+            a: a.to_string(),
+            b: b.to_string(),
+            c: c.to_string(),
+        };
         match op {
             "AND" => Ok(Self::And(args)),
             "OR" => Ok(Self::Or(args)),
             "XOR" => Ok(Self::Xor(args)),
-            _ => Err(anyhow!("No match"))
+            _ => Err(anyhow!("No match")),
         }
     }
 }
