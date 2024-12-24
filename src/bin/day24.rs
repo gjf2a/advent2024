@@ -13,6 +13,8 @@ fn main() -> anyhow::Result<()> {
         let circuit = Circuit::from_file(filename)?;
         if options.contains(&"-showzs") {
             show_bad_zs(circuit);
+        } else if options.contains(&"-alt") {
+            alt(filename, part)?;
         } else if options.contains(&"-singles") {
             show_single_ancestors(circuit);
         } else if options.contains(&"-swapall") {
@@ -25,6 +27,150 @@ fn main() -> anyhow::Result<()> {
         }
         Ok(())
     })
+}
+
+fn alt(filename: &str, part: Part) -> anyhow::Result<()> {
+    let encoding = CircuitEncoding::from_file(filename)?;
+    match part {
+        Part::One => {
+            let mut state = encoding.circuit();
+            state.run_to_completion(&encoding);
+            println!("{state:?}");
+            println!("{}", state.output_for("z", &encoding));
+        }
+        Part::Two => {
+            todo!()
+        }
+    }
+    Ok(())
+}
+
+#[derive(Default, Debug)]
+struct CircuitEncoding {
+    names: Vec<String>,
+    name_encodings: HashMap<String, usize>,
+    starts: Vec<u128>,
+    successors: Vec<Vec<usize>>,
+    ands: HashMap<usize, (usize, usize)>,
+    iors: HashMap<usize, (usize, usize)>,
+    xors: HashMap<usize, (usize, usize)>,
+    named: BTreeMap<String, BTreeMap<String, usize>>,
+}
+
+impl CircuitEncoding {
+    fn from_file(filename: &str) -> anyhow::Result<Self> {
+        let mut result = CircuitEncoding::default();
+        for pre in ["x", "y", "z"] {
+            result.named.insert(pre.to_string(), BTreeMap::new());
+        }
+
+        let mut lines = all_lines(filename)?;
+        for line in lines.by_ref().take_while(|line| line.len() > 0) {
+            let (name, value) = line.split(": ").collect_tuple().unwrap();
+            result.add_name(name);
+            result.starts.push(value.parse().unwrap());
+        }
+
+        for line in lines {
+            let (a, op, b, _, c) = line.split_whitespace().collect_tuple().unwrap();
+            let a = result.add_name(a);
+            let b = result.add_name(b);
+            let c = result.add_name(c);
+            let op_map = match op {
+                "AND" => &mut result.ands,
+                "OR" => &mut result.iors,
+                "XOR" => &mut result.xors,
+                _ => panic!("No match")
+            };
+            op_map.insert(c, (a, b));
+        }
+
+        Ok(result)
+    }
+
+    fn circuit(&self) -> EncodedCircuit {
+        let values = (0..self.names.len()).map(|i| self.starts.get(i).copied()).collect();
+        EncodedCircuit { values, swaps: vec![] }
+    }
+
+    fn inputs_for(&self, id_num: usize) -> (usize, usize) {
+        for op_map in [&self.ands, &self.iors, &self.xors] {
+            if let Some(p) = op_map.get(&id_num) {
+                return *p;
+            }
+        }
+        panic!("Bad id num: {id_num}");
+    }
+
+    fn eval(&self, id_num: usize, a: u128, b: u128) -> u128 {
+        if self.ands.contains_key(&id_num) {
+            a & b
+        } else if self.iors.contains_key(&id_num) {
+            a | b
+        } else if self.xors.contains_key(&id_num) {
+            a ^ b
+        } else {
+            panic!("{id_num} is not an op");
+        }
+    }
+
+    fn add_name(&mut self, name: &str) -> usize {
+        match self.name_encodings.get(name) {
+            Some(i) => *i,
+            None => {
+                let i = self.names.len();
+                self.name_encodings.insert(name.to_string(), i);
+                self.names.push(name.to_string());
+                self.successors.push(vec![]);
+
+                if let Some(index) = self.named.get_mut(&name[0..1]) {
+                    index.insert(name.to_string(), i);
+                }
+                i
+            }
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+struct EncodedCircuit {
+    values: Vec<Option<u128>>,
+    swaps: Vec<(usize, usize)>,
+}
+
+impl EncodedCircuit {
+    fn run_to_completion(&mut self, encoding: &CircuitEncoding) -> bool {
+        BfsIter::multi_start(0..encoding.starts.len(), |id_num| {
+            let mut successors = vec![];
+            for s in encoding.successors[*id_num].iter() {
+                let out = match self.swap_for(*s) {
+                    Some(other) => other,
+                    None => *s,
+                };
+                let (a, b) = encoding.inputs_for(out);
+                if let Some(a) = self.values[a] {
+                    if let Some(b) = self.values[b] {
+                        self.values[out] = Some(encoding.eval(out, a, b));
+                        successors.push(out);
+                    }
+                }
+            }
+            successors
+        });
+        self.values.iter().all(|v| v.is_some())
+    }
+
+    fn swap_for(&self, i: usize) -> Option<usize> {
+        self.swaps.iter().flat_map(|(a, b)| {
+            if i == *a {Some(*b)} else if i == *b {Some(*a)} else {None}
+        }).next()
+    }
+
+    fn output_for(&self, key: &str, encoding: &CircuitEncoding) -> u128 {
+        encoding.named.get(key).unwrap().iter()
+            .map(|(_,v)| self.values[*v].unwrap())
+            .reduce(|a, b| a << 1 + b).unwrap()
+    }
 }
 
 fn part1(mut circuit: Circuit) {
