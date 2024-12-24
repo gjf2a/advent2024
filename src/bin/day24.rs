@@ -5,6 +5,7 @@ use std::{
 
 use advent2024::{advent_main, all_lines, search_iter::BfsIter, Part};
 use anyhow::anyhow;
+use hash_histogram::HashHistogram;
 use itertools::Itertools;
 
 fn main() -> anyhow::Result<()> {
@@ -14,6 +15,8 @@ fn main() -> anyhow::Result<()> {
             show_bad_zs(circuit);
         } else if options.contains(&"-singles") {
             show_single_ancestors(circuit);
+        } else if options.contains(&"-swapall") {
+            swap_every_pair(circuit);
         } else {
             match part {
                 Part::One => part1(circuit),
@@ -25,7 +28,7 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn part1(mut circuit: Circuit) {
-    circuit.run();
+    circuit.run_to_completion();
     println!("{}", circuit.extract_num_with("z"));
 }
 
@@ -36,7 +39,7 @@ fn part2(circuit: Circuit) {
 #[derive(Clone)]
 struct Circuit {
     values: BTreeMap<String, u128>,
-    pending: Vec<Gate>,
+    pending: BTreeMap<String, Gate>,
 }
 
 impl Circuit {
@@ -48,7 +51,7 @@ impl Circuit {
             values.insert(name.to_string(), value.parse::<u128>().unwrap());
         }
 
-        let pending = lines.map(|line| line.parse::<Gate>().unwrap()).collect();
+        let pending = lines.map(|line| line.parse::<Gate>().unwrap()).map(|g| (g.output().to_string(), g)).collect();
         Ok(Self { values, pending })
     }
 
@@ -62,81 +65,82 @@ impl Circuit {
             .unwrap()
     }
 
-    fn run(&mut self) {
+    fn run_to_completion(&mut self) -> bool {
         while !self.pending.is_empty() {
             let mut new_pending = self
                 .pending
                 .iter()
-                .filter_map(|gate| gate.apply(&mut self.values))
-                .collect();
+                .filter_map(|(_,gate)| gate.apply(&mut self.values))
+                .collect::<BTreeMap<_,_>>();
+            if new_pending.len() == self.pending.len() {
+                return false;
+            }
             std::mem::swap(&mut self.pending, &mut new_pending);
         }
+        true
     }
 
     fn gate_for(&self, var: &str) -> Gate {
-        self.pending
-            .iter()
-            .find(|g| g.output() == var)
-            .unwrap()
-            .clone()
+        self.pending.get(var).unwrap().clone()
     }
 
-    fn swapped_outputs_for(&self, g1: &Gate, g2: &Gate) -> Self {
+    fn swapped_outputs_for(&self, o1: &str, o2: &str) -> Self {
         Self {
             values: self.values.clone(),
-            pending: self
-                .pending
-                .iter()
-                .map(|g| {
-                    if g == g1 {
-                        g.with_new_output(g2.output())
-                    } else if g == g2 {
-                        g.with_new_output(g1.output())
-                    } else {
-                        g.clone()
-                    }
-                })
-                .collect(),
+            pending: self.pending.iter().map(|(o, g)| {
+                if o == o1 {
+                    (o.clone(), self.pending.get(o2).unwrap().with_new_output(o))
+                } else if o == o2 {
+                    (o.clone(), self.pending.get(o1).unwrap().with_new_output(o))
+                } else {
+                    (o.clone(), g.clone())
+                }
+            }).collect()
         }
     }
 
     fn ancestors_of(&self, var: &str) -> BTreeSet<Gate> {
         BfsIter::new(self.gate_for(var), |v| {
-            let mut ancestors = vec![];
-            for gate in self.pending.iter() {
-                if v.has_input(gate.output()) {
-                    ancestors.push(gate.clone());
-                }
-            }
-            ancestors
+            self.pending
+                .iter()
+                .map(|(_, gate)| gate)
+                .filter(|gate| v.has_input(gate.output()))
+                .cloned()
+                .collect()
         })
         .collect()
     }
 
-    fn bad_zs(&self) -> BTreeSet<String> {
+    fn bad_zs(&self) -> Option<BTreeSet<String>> {
         let mut test = self.clone();
         let x = test.extract_num_with("x");
         let y = test.extract_num_with("y");
-        test.run();
-        let z = test.extract_num_with("z");
-        let goal = x + y;
-        let wrong = z ^ goal;
-        (0..)
-            .take_while(|i| wrong > 2_u128.pow(*i))
-            .filter(|i| (wrong >> *i) & 1 == 1)
-            .map(|i| {
-                let i = if i >= 10 {
-                    format!("{i}")
-                } else {
-                    format!("0{i}")
-                };
-                format!("z{i}")
-            })
-            .collect()
+        if test.run_to_completion() {
+            let z = test.extract_num_with("z");
+            let goal = x + y;
+            let wrong = z ^ goal;
+            Some(
+                (0..)
+                    .take_while(|i| wrong > 2_u128.pow(*i))
+                    .filter(|i| (wrong >> *i) & 1 == 1)
+                    .map(|i| {
+                        let i = if i >= 10 {
+                            format!("{i}")
+                        } else {
+                            format!("0{i}")
+                        };
+                        format!("z{i}")
+                    })
+                    .collect(),
+            )
+        } else {
+            None
+        }
     }
 
     fn single_ancestor_bad(&self) -> Gate {
         self.bad_zs()
+            .unwrap()
             .iter()
             .map(|z| self.ancestors_of(z.as_str()))
             .find(|a| a.len() == 1)
@@ -212,12 +216,12 @@ impl Gate {
         }
     }
 
-    fn apply(&self, values: &mut BTreeMap<String, u128>) -> Option<Self> {
+    fn apply(&self, values: &mut BTreeMap<String, u128>) -> Option<(String,Self)> {
         self.ops(values)
             .map(|(a, b, c)| {
                 values.insert(c, self.eval(a, b));
             })
-            .map_or(Some(self.clone()), |_| None)
+            .map_or(Some((self.output().to_string(), self.clone())), |_| None)
     }
 }
 
@@ -244,7 +248,7 @@ fn show_bad_zs(circuit: Circuit) {
     let mut test = circuit.clone();
     let x = test.extract_num_with("x");
     let y = test.extract_num_with("y");
-    test.run();
+    test.run_to_completion();
     let z = test.extract_num_with("z");
     let goal = x + y;
     let wrong = z ^ goal;
@@ -252,6 +256,7 @@ fn show_bad_zs(circuit: Circuit) {
     println!("{:?}", circuit.bad_zs());
     let union = circuit
         .bad_zs()
+        .unwrap()
         .iter()
         .map(|z| circuit.ancestors_of(z.as_str()))
         .reduce(|a, b| a.union(&b).cloned().collect::<BTreeSet<_>>())
@@ -264,15 +269,15 @@ fn show_bad_zs(circuit: Circuit) {
 
     ancestor_analysis(&circuit);
     let for_sure = circuit.single_ancestor_bad();
-    for gate in circuit.bad_zs().iter().filter(|v| for_sure.args().c != **v) {
-        let alternative = circuit.swapped_outputs_for(&for_sure, &circuit.gate_for(gate.as_str()));
+    for gate in circuit.bad_zs().unwrap().iter().filter(|v| for_sure.args().c != **v) {
+        let alternative = circuit.swapped_outputs_for(for_sure.output(), gate.as_str());
         println!("vs {gate}:");
         ancestor_analysis(&alternative);
     }
 }
 
 fn ancestor_analysis(circuit: &Circuit) {
-    for z in circuit.bad_zs().iter() {
+    for z in circuit.bad_zs().unwrap().iter() {
         let ancestors = circuit.ancestors_of(z.as_str());
         if circuit.ancestors_of(z.as_str()).len() == 1 {
             println!("z: {z} ancestors: {ancestors:?}");
@@ -285,7 +290,7 @@ fn ancestor_analysis(circuit: &Circuit) {
 
 fn show_single_ancestors(mut circuit: Circuit) {
     let mut all_singles = BTreeSet::new();
-    for bad_z in circuit.bad_zs() {
+    for bad_z in circuit.bad_zs().unwrap() {
         println!("bad z: {bad_z}");
         let ancestors = circuit.ancestors_of(bad_z.as_str());
         for ancestor in ancestors {
@@ -297,12 +302,49 @@ fn show_single_ancestors(mut circuit: Circuit) {
         println!();
     }
     println!("Total singles: {}", all_singles.len());
-    let all_outputs = circuit.pending.iter().map(|g| g.output().to_string()).collect_vec();
+    let all_outputs = circuit
+        .pending
+        .iter()
+        .map(|(out, _)| out.to_string())
+        .collect_vec();
 
-    circuit.run();
-    let ones = all_singles.iter().filter(|s| *circuit.values.get(s.output()).unwrap() == 1).count();
+    circuit.run_to_completion();
+    let ones = all_singles
+        .iter()
+        .filter(|s| *circuit.values.get(s.output()).unwrap() == 1)
+        .count();
     println!("Singles: Ones: {ones} Zeros: {}", all_singles.len() - ones);
 
-    let ones = all_outputs.iter().filter(|o| *circuit.values.get(o.as_str()).unwrap() == 1).count();
+    let ones = all_outputs
+        .iter()
+        .filter(|o| *circuit.values.get(o.as_str()).unwrap() == 1)
+        .count();
     println!("All: Ones: {ones} Zeros: {}", all_outputs.len() - ones);
+}
+
+fn swap_every_pair(circuit: Circuit) {
+    let bad_zs = circuit.bad_zs().unwrap();
+    let all_ancestors = bad_zs
+        .iter()
+        .map(|z| circuit.ancestors_of(z.as_str()))
+        .reduce(|a, b| a.union(&b).cloned().collect::<BTreeSet<_>>())
+        .unwrap()
+        .iter()
+        .cloned()
+        .collect_vec();
+
+    let mut improvements = HashHistogram::<usize>::new();
+    for i in 0..all_ancestors.len() {
+        for j in (i + 1)..all_ancestors.len() {
+            let o1 = all_ancestors[i].output();
+            let o2 = all_ancestors[j].output();
+            let alternative = circuit.swapped_outputs_for(o1, o2);
+            if let Some(swapped_zs) = alternative.bad_zs() {
+                if swapped_zs.len() < bad_zs.len() {
+                    improvements.bump(&(bad_zs.len() - swapped_zs.len()));
+                }
+            }
+        }
+    }
+    println!("improved: {:?}", improvements.ranking_with_counts());
 }
