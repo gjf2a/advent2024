@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, iter::repeat};
 
 use advent2024::{advent_main, grid::GridCharWorld, multidim::Position, search_iter::BfsIter};
 use common_macros::hash_map;
@@ -14,25 +14,46 @@ const DIRECTION_PAD: &str = " ^A
 const NUM_ROBOTS: usize = 3;
 const NUM_TABLES: usize = NUM_ROBOTS - 1;
 
+/*
+Base case: All As => 1
+Recursive case: For every possible input < > ^ v A
+* Create the previous state from which the input produces the current state
+  *
+* Recursively calculate the cost
+* Find the minimum of the five costs.
+ */
+
 fn main() -> anyhow::Result<()> {
     advent_main(|filename, part, _| {
         println!("{filename} {part:?}");
-        let robots = Robots::new();
+        let panel = DIRECTION_PAD.parse::<GridCharWorld>()?;
+        let robot1 = panel
+            .position_value_iter()
+            .filter(|(_, v)| **v != ' ')
+            .flat_map(|p| repeat(p).zip(panel.position_value_iter().filter(|(_, v)| **v != ' ')))
+            .map(|((p1, v1), (p2, v2))| ((v1, v2), 1 + p1.manhattan_distance(p2)))
+            .collect::<HashMap<_, _>>();
+        println!("{robot1:?}");
 
+        let robot2 = panel
+            .position_value_iter()
+            .filter(|(_, v)| **v != ' ')
+            .flat_map(|p| repeat(p).zip(robot1.iter()))
+            .map(|((p, v), ((v1, v2), c))| {});
         Ok(())
     })
 }
 
 struct Robots {
     keypads: [GridCharWorld; NUM_ROBOTS],
-    presses_needed_for: [HashMap<(Position,Position), usize>; NUM_TABLES]
+    presses_needed_for: [HashMap<(Position, Position), usize>; NUM_TABLES],
 }
 
 impl Robots {
     fn new() -> Self {
         let keypads = [
-            DIRECTION_PAD.parse::<GridCharWorld>().unwrap(), 
-            DIRECTION_PAD.parse::<GridCharWorld>().unwrap(), 
+            DIRECTION_PAD.parse::<GridCharWorld>().unwrap(),
+            DIRECTION_PAD.parse::<GridCharWorld>().unwrap(),
             NUMERIC_PAD.parse::<GridCharWorld>().unwrap(),
         ];
         let zero2one = hash_map!(
@@ -54,20 +75,17 @@ impl Robots {
         );
         let one2two = hash_map!(
             (('A', 'A'), 'A') => 1,
-            (('^', 'A'), 'A') => 2,     
+            (('^', 'A'), 'A') => 2,
             (('A', '^'), 'A') => 2,
-            (('^', '^'), 'A') => 3,       
+            (('^', '^'), 'A') => 3,
         );
         let arms = keypads.clone().map(|p| p.any_position_for('A'));
-        let starting_arms = Arms {arms};
+        let starting_arms = Arms { arms };
         let mut tables = [HashMap::new(), HashMap::new()];
-        BfsIter::new(start, successor)
-        for start in 0..tables.len() {
-
-        }
+        for start in 0..tables.len() {}
         Self {
             keypads,
-            presses_needed_for: tables
+            presses_needed_for: tables,
         }
     }
 
@@ -124,10 +142,11 @@ impl MoveToIterator {
             state: Some(arms.clone()),
         }
     }
-
+    /*
     fn first_unaligned_level(&self) -> Option<usize> {
         (0..self.level_goals.len()).find(|level| self.robots.keypads[*level].value(self.state.arms[*level]).unwrap() != self.level_goals[*level])
     }
+    */
 }
 
 impl Iterator for MoveToIterator {
