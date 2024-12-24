@@ -1,9 +1,9 @@
 use std::{
-    collections::{BTreeMap, BTreeSet},
+    collections::{BTreeMap, BTreeSet, HashMap},
     str::FromStr,
 };
 
-use advent2024::{advent_main, all_lines, search_iter::{BfsIter, PrioritySearchIter}, Part};
+use advent2024::{advent_main, all_lines, graph::AdjacencySets, search_iter::{BfsIter, PrioritySearchIter}, Part};
 use anyhow::anyhow;
 use hash_histogram::HashHistogram;
 use itertools::Itertools;
@@ -359,6 +359,8 @@ fn swap_every_pair(circuit: Circuit) {
     let all_ancestors = circuit.bad_z_ancestors();
 
     let mut improvements = HashHistogram::<usize>::new();
+    let mut options = vec![];
+    let mut swappees = AdjacencySets::default();
     for i in 0..all_ancestors.len() {
         for j in (i + 1)..all_ancestors.len() {
             let o1 = all_ancestors[i].output();
@@ -366,10 +368,38 @@ fn swap_every_pair(circuit: Circuit) {
             let alternative = circuit.swapped_outputs_for(o1, o2);
             if let Some(swapped_zs) = alternative.bad_zs() {
                 if swapped_zs.len() < bad_zs.len() {
-                    improvements.bump(&(bad_zs.len() - swapped_zs.len()));
+                    let improvement = bad_zs.len() - swapped_zs.len();
+                    improvements.bump(&improvement);
+                    options.push((improvement, o1, o2));
+                    swappees.connect2(o1, o2);
                 }
             }
         }
     }
+    let mut compatible = HashMap::new();
+    for (_, a, b) in options.iter().copied() {
+        compatible.insert((a, b), vec![]);
+        for (c2, a2, b2) in options.iter().copied() {
+            if a != a2 && b != b2 {
+                compatible.get_mut(&(a, b)).unwrap().push((c2, a2, b2));
+            }
+        }
+    }
     println!("improved: {:?}", improvements.ranking_with_counts());
+    let most_alternatives = compatible.values().map(|v| v.len()).max().unwrap();
+    let least_alternatives = compatible.values().map(|v| v.len()).min().unwrap();
+    println!("most alternatives: {most_alternatives} (least: {least_alternatives})");
+
+    let options_5 = options.iter().filter(|(c,_,_)| *c == 5).collect_vec();
+    let mut compatible_5 = vec![];
+    for i in 0..options_5.len() {
+        let (_, a1, b1) = options_5[i];
+        for j in (i + 1)..options_5.len() {
+            let (_, a2, b2) = options_5[j];
+            if a1 != a2 && b1 != b2 && a1 != b2 && b1 != a2 {
+                compatible_5.push(((*a1, *b1), (*a2, *b2)));
+            }
+        }
+    }
+    println!("{compatible_5:?}");
 }
