@@ -1,10 +1,17 @@
 use std::{
     collections::{BTreeMap, BTreeSet, HashMap},
     str::FromStr,
+    time::Instant,
 };
 
-use advent2024::{advent_main, all_lines, graph::AdjacencySets, search_iter::{BfsIter, PrioritySearchIter}, Part};
+use advent2024::{
+    advent_main, all_lines,
+    graph::AdjacencySets,
+    search_iter::{BfsIter, PrioritySearchIter},
+    Part,
+};
 use anyhow::anyhow;
+use common_macros::b_tree_map;
 use hash_histogram::HashHistogram;
 use itertools::Itertools;
 
@@ -80,7 +87,7 @@ impl CircuitEncoding {
                 "AND" => &mut result.ands,
                 "OR" => &mut result.iors,
                 "XOR" => &mut result.xors,
-                _ => panic!("No match")
+                _ => panic!("No match"),
             };
             op_map.insert(c, (a, b));
         }
@@ -89,8 +96,13 @@ impl CircuitEncoding {
     }
 
     fn circuit(&self) -> EncodedCircuit {
-        let values = (0..self.names.len()).map(|i| self.starts.get(i).copied()).collect();
-        EncodedCircuit { values, swaps: vec![] }
+        let values = (0..self.names.len())
+            .map(|i| self.starts.get(i).copied())
+            .collect();
+        EncodedCircuit {
+            values,
+            swaps: vec![],
+        }
     }
 
     fn inputs_for(&self, id_num: usize) -> (usize, usize) {
@@ -161,15 +173,29 @@ impl EncodedCircuit {
     }
 
     fn swap_for(&self, i: usize) -> Option<usize> {
-        self.swaps.iter().flat_map(|(a, b)| {
-            if i == *a {Some(*b)} else if i == *b {Some(*a)} else {None}
-        }).next()
+        self.swaps
+            .iter()
+            .flat_map(|(a, b)| {
+                if i == *a {
+                    Some(*b)
+                } else if i == *b {
+                    Some(*a)
+                } else {
+                    None
+                }
+            })
+            .next()
     }
 
     fn output_for(&self, key: &str, encoding: &CircuitEncoding) -> u128 {
-        encoding.named.get(key).unwrap().iter()
-            .map(|(_,v)| self.values[*v].unwrap())
-            .reduce(|a, b| a << 1 + b).unwrap()
+        encoding
+            .named
+            .get(key)
+            .unwrap()
+            .iter()
+            .map(|(_, v)| self.values[*v].unwrap())
+            .reduce(|a, b| a << 1 + b)
+            .unwrap()
     }
 }
 
@@ -181,30 +207,40 @@ fn part1(mut circuit: Circuit) {
 fn part2(circuit: Circuit) {
     let bad_zs = circuit.bad_zs().unwrap();
     let max_bad = bad_zs.len();
-    let mut searcher = PrioritySearchIter::a_star(circuit.clone(), |c| {
-        let all_ancestors = c.bad_z_ancestors();
-        let mut v = vec![];
-        for i in 0..all_ancestors.len() {
-            for j in (i + 1)..all_ancestors.len() {
-                let o1 = all_ancestors[i].output();
-                let o2 = all_ancestors[j].output();
-                let alternative = circuit.swapped_outputs_for(o1, o2);
-                if let Some(swapped_zs) = alternative.bad_zs() {
-                    if swapped_zs.len() < bad_zs.len() {
-                        v.push((alternative, 1));
+    let mut searcher = PrioritySearchIter::a_star(
+        circuit.clone(),
+        |c| {
+            let all_ancestors = c.bad_z_ancestors();
+            let mut v = vec![];
+            for i in 0..all_ancestors.len() {
+                for j in (i + 1)..all_ancestors.len() {
+                    let o1 = all_ancestors[i].output();
+                    let o2 = all_ancestors[j].output();
+                    let alternative = circuit.swapped_outputs_for(o1, o2);
+                    if let Some(swapped_zs) = alternative.bad_zs() {
+                        if swapped_zs.len() < bad_zs.len() {
+                            v.push((alternative, 1));
+                        }
                     }
                 }
             }
-        }
-        v
-    }, |c| {
-        match c.bad_zs() {
+            v
+        },
+        |c| match c.bad_zs() {
             None => max_bad * 2,
-            Some(bz) => bz.len()
-        }
-    });
-    let winner = searcher.by_ref().find(|c| c.bad_zs().map_or(max_bad, |zs| zs.len()) == 0).unwrap();
-    let changes = winner.pending.iter().filter(|(o, g)| circuit.pending.get(o.as_str()).unwrap() != *g).map(|(o, _)| o.to_string()).collect::<BTreeSet<_>>();
+            Some(bz) => bz.len(),
+        },
+    );
+    let winner = searcher
+        .by_ref()
+        .find(|c| c.bad_zs().map_or(max_bad, |zs| zs.len()) == 0)
+        .unwrap();
+    let changes = winner
+        .pending
+        .iter()
+        .filter(|(o, g)| circuit.pending.get(o.as_str()).unwrap() != *g)
+        .map(|(o, _)| o.to_string())
+        .collect::<BTreeSet<_>>();
     let output = changes.iter().join(",");
     println!("{output}");
 }
@@ -224,7 +260,10 @@ impl Circuit {
             values.insert(name.to_string(), value.parse::<u128>().unwrap());
         }
 
-        let pending = lines.map(|line| line.parse::<Gate>().unwrap()).map(|g| (g.output().to_string(), g)).collect();
+        let pending = lines
+            .map(|line| line.parse::<Gate>().unwrap())
+            .map(|g| (g.output().to_string(), g))
+            .collect();
         Ok(Self { values, pending })
     }
 
@@ -243,8 +282,8 @@ impl Circuit {
             let mut new_pending = self
                 .pending
                 .iter()
-                .filter_map(|(_,gate)| gate.apply(&mut self.values))
-                .collect::<BTreeMap<_,_>>();
+                .filter_map(|(_, gate)| gate.apply(&mut self.values))
+                .collect::<BTreeMap<_, _>>();
             if new_pending.len() == self.pending.len() {
                 return false;
             }
@@ -260,15 +299,36 @@ impl Circuit {
     fn swapped_outputs_for(&self, o1: &str, o2: &str) -> Self {
         Self {
             values: self.values.clone(),
-            pending: self.pending.iter().map(|(o, g)| {
-                if o == o1 {
-                    (o.clone(), self.pending.get(o2).unwrap().with_new_output(o))
-                } else if o == o2 {
-                    (o.clone(), self.pending.get(o1).unwrap().with_new_output(o))
-                } else {
-                    (o.clone(), g.clone())
-                }
-            }).collect()
+            pending: self
+                .pending
+                .iter()
+                .map(|(o, g)| {
+                    if o == o1 {
+                        (o.clone(), self.pending.get(o2).unwrap().with_new_output(o))
+                    } else if o == o2 {
+                        (o.clone(), self.pending.get(o1).unwrap().with_new_output(o))
+                    } else {
+                        (o.clone(), g.clone())
+                    }
+                })
+                .collect(),
+        }
+    }
+
+    fn swapped_output_pairs(&self, pairs: &BTreeMap<&&str, &&str>) -> Self {
+        Self {
+            values: self.values.clone(),
+            pending: self
+                .pending
+                .iter()
+                .map(|(o, g)| match pairs.get(&o.as_str()) {
+                    None => (o.clone(), g.clone()),
+                    Some(sub) => (
+                        o.clone(),
+                        self.pending.get(**sub).unwrap().with_new_output(o),
+                    ),
+                })
+                .collect(),
         }
     }
 
@@ -312,14 +372,15 @@ impl Circuit {
     }
 
     fn bad_z_ancestors(&self) -> Vec<Gate> {
-        self.bad_zs().unwrap()
-        .iter()
-        .map(|z| self.ancestors_of(z.as_str()))
-        .reduce(|a, b| a.union(&b).cloned().collect::<BTreeSet<_>>())
-        .unwrap()
-        .iter()
-        .cloned()
-        .collect_vec()
+        self.bad_zs()
+            .unwrap()
+            .iter()
+            .map(|z| self.ancestors_of(z.as_str()))
+            .reduce(|a, b| a.union(&b).cloned().collect::<BTreeSet<_>>())
+            .unwrap()
+            .iter()
+            .cloned()
+            .collect_vec()
     }
 
     fn single_ancestor_bad(&self) -> Gate {
@@ -400,7 +461,7 @@ impl Gate {
         }
     }
 
-    fn apply(&self, values: &mut BTreeMap<String, u128>) -> Option<(String,Self)> {
+    fn apply(&self, values: &mut BTreeMap<String, u128>) -> Option<(String, Self)> {
         self.ops(values)
             .map(|(a, b, c)| {
                 values.insert(c, self.eval(a, b));
@@ -447,7 +508,12 @@ fn show_bad_zs(circuit: Circuit) {
 
     ancestor_analysis(&circuit);
     let for_sure = circuit.single_ancestor_bad();
-    for gate in circuit.bad_zs().unwrap().iter().filter(|v| for_sure.args().c != **v) {
+    for gate in circuit
+        .bad_zs()
+        .unwrap()
+        .iter()
+        .filter(|v| for_sure.args().c != **v)
+    {
         let alternative = circuit.swapped_outputs_for(for_sure.output(), gate.as_str());
         println!("vs {gate}:");
         ancestor_analysis(&alternative);
@@ -502,10 +568,14 @@ fn show_single_ancestors(mut circuit: Circuit) {
 
 fn swap_every_pair(circuit: Circuit) {
     let bad_zs = circuit.bad_zs().unwrap();
+    let mut bad_z_options = bad_zs
+        .iter()
+        .map(|z| (z, vec![]))
+        .collect::<HashMap<_, _>>();
     let all_ancestors = circuit.bad_z_ancestors();
 
     let mut improvements = HashHistogram::<usize>::new();
-    let mut options = vec![];
+    let mut options = HashMap::new();
     let mut swappees = AdjacencySets::default();
     for i in 0..all_ancestors.len() {
         for j in (i + 1)..all_ancestors.len() {
@@ -513,22 +583,29 @@ fn swap_every_pair(circuit: Circuit) {
             let o2 = all_ancestors[j].output();
             let alternative = circuit.swapped_outputs_for(o1, o2);
             if let Some(swapped_zs) = alternative.bad_zs() {
-                if swapped_zs.iter().all(|z| bad_zs.contains(z)) && swapped_zs.len() < bad_zs.len() {
-                    let remaining_zs = bad_zs.iter().filter(|z| !swapped_zs.contains(z.as_str())).collect_vec();
+                if swapped_zs.iter().all(|z| bad_zs.contains(z)) && swapped_zs.len() < bad_zs.len()
+                {
+                    for z in swapped_zs.iter() {
+                        bad_z_options.get_mut(z).unwrap().push((o1, o2));
+                    }
+                    let remaining_zs = bad_zs
+                        .iter()
+                        .filter(|z| !swapped_zs.contains(z.as_str()))
+                        .collect_vec();
                     let improvement = bad_zs.len() - swapped_zs.len();
                     improvements.bump(&improvement);
-                    options.push((improvement, o1, o2, remaining_zs));
+                    options.insert((o1, o2), remaining_zs);
                     swappees.connect2(o1, o2);
                 }
             }
         }
     }
     let mut compatible = HashMap::new();
-    for (_, a, b, zs) in options.iter().cloned() {
+    for ((a, b), zs) in options.iter() {
         compatible.insert((a, b), vec![]);
-        for (c2, a2, b2, zs2) in options.iter().cloned() {
+        for ((a2, b2), zs2) in options.iter() {
             if a != a2 && b != b2 && zs.iter().all(|z| !zs2.contains(z)) {
-                compatible.get_mut(&(a, b)).unwrap().push((c2, a2, b2));
+                compatible.get_mut(&(a, b)).unwrap().push((a2, b2));
             }
         }
     }
@@ -536,4 +613,61 @@ fn swap_every_pair(circuit: Circuit) {
     let most_alternatives = compatible.values().map(|v| v.len()).max().unwrap();
     let least_alternatives = compatible.values().map(|v| v.len()).min().unwrap();
     println!("most alternatives: {most_alternatives} (least: {least_alternatives})");
+
+    let start = Instant::now();
+    for (opt, ((a, b), zs)) in options.iter().enumerate() {
+        let elapsed = Instant::now().duration_since(start).as_secs_f32();
+        println!("Considering option {opt} / {} ({elapsed}s)", options.len());
+        let zs = zs.iter().collect::<BTreeSet<_>>();
+        let swaps = b_tree_map![a => b, b => a];
+        let compat = compatible.get(&(a, b)).unwrap();
+        for i in 0..compat.len() {
+            let mut swaps_i = swaps.clone();
+            let (ai, bi) = compat[i];
+            swaps_i.insert(ai, bi);
+            swaps_i.insert(bi, ai);
+            let mut zs_i = zs.clone();
+            for z in options.get(&(ai, bi)).unwrap().iter() {
+                zs_i.insert(z);
+            }
+            for j in (i + 1)..compat.len() {
+                let (aj, bj) = compat[j];
+                if !swaps_i.contains_key(aj) && !swaps_i.contains_key(bj) {
+                    let mut swaps_j = swaps_i.clone();
+                    swaps_j.insert(aj, bj);
+                    swaps_j.insert(bj, aj);
+                    let mut zs_j = zs_i.clone();
+                    for z in options.get(&(aj, bj)).unwrap().iter() {
+                        zs_j.insert(z);
+                    }
+                    for k in (j + 1)..compat.len() {
+                        let (ak, bk) = compat[k];
+                        if !swaps_j.contains_key(ak) && !swaps_j.contains_key(bk) {
+                            let mut swaps_k = swaps_j.clone();
+                            swaps_k.insert(ak, bk);
+                            swaps_k.insert(bk, ak);
+                            let mut zs_k = zs_j.clone();
+                            for z in options.get(&(ak, bk)).unwrap().iter() {
+                                zs_k.insert(z);
+                            }
+                            if zs_k.len() == bad_zs.len() {
+                                let mut test = circuit.swapped_output_pairs(&swaps);
+                                let x = test.extract_num_with("x");
+                                let y = test.extract_num_with("y");
+                                test.run_to_completion();
+                                let z = test.extract_num_with("z");
+                                let goal = x + y;
+                                let wrong = z ^ goal;
+                                if wrong == 0 {
+                                    println!("We have a winner!");
+                                    println!("{}", swaps_k.keys().join(","));
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
