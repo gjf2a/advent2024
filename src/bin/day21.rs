@@ -1,4 +1,4 @@
-use std::{collections::HashMap, iter::repeat};
+use std::collections::HashMap;
 
 use advent2024::{advent_main, all_lines, grid::GridCharWorld, multidim::{DirType, ManhattanDir, Position}, search_iter::BfsIter};
 use common_macros::hash_map;
@@ -12,6 +12,7 @@ const DIRECTION_PAD: &str = " ^A
 <v>";
 
 const NUM_ROBOTS: usize = 3;
+const NUM_OUTPUTS: usize = 4;
 const NUM_TABLES: usize = NUM_ROBOTS - 1;
 
 /*
@@ -42,6 +43,150 @@ fn main() -> anyhow::Result<()> {
         println!("{part1}");
         Ok(())
     })
+}
+
+struct LookupTables {
+    char2dir: HashMap<char, Position>,
+    dir2char: HashMap<Position, char>,
+    char2digit: HashMap<char, Position>,
+    digit2char: HashMap<Position, char>,
+}
+
+impl Default for LookupTables {
+    fn default() -> Self {
+        let (char2dir, dir2char) = lookups(DIRECTION_PAD);
+        let (char2digit, digit2char) = lookups(NUMERIC_PAD);
+        Self { char2dir, dir2char, char2digit, digit2char }
+    }
+}
+
+impl LookupTables {
+    fn dir_for(&self, c: char) -> Position {
+        *self.char2dir.get(&c).unwrap()
+    }
+
+    fn digit_for(&self, c: char) -> Position {
+        *self.char2digit.get(&c).unwrap()
+    }
+
+    fn dir_key_for(&self, p: Position) -> char {
+        *self.dir2char.get(&p).unwrap()
+    }
+
+    fn digit_key_for(&self, p: Position) -> char {
+        *self.digit2char.get(&p).unwrap()
+    }
+
+    fn dir_chars(&self) -> impl Iterator<Item = char> + '_ {
+        self.char2dir.keys().copied()
+    }
+
+    fn digit_chars(&self) -> impl Iterator<Item = char> + '_ {
+        self.char2digit.keys().copied()
+    }
+
+    fn valid_digit(&self, p: Position) -> bool {
+        self.digit2char.contains_key(&p)
+    }
+
+    fn valid_dir(&self, p: Position) -> bool {
+        self.dir2char.contains_key(&p)
+    }
+
+    fn successors(&self, successor_map: &HashMap<Position,char>, current: Position) -> Vec<Position> {
+        self.dir_chars().filter_map(|c| {
+            match ManhattanDir::try_from(c) {
+                Ok(d) => {
+                    let next = d.neighbor(current);
+                    if successor_map.contains_key(&next) {
+                        Some(next)
+                    } else {
+                        None
+                    }
+                }
+                Err(_) => Some(current),
+            }
+        }).collect()
+    }
+
+    fn successor_dirs(&self, current: Position) -> Vec<Position> {
+        self.successors(&self.dir2char, current)
+    }
+
+    fn successor_digits(&self, current: Position) -> Vec<Position> {
+        self.successors(&self.digit2char, current)
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+struct Key {
+    arms: [Position; NUM_ROBOTS],
+    outputs: [Option<char>; NUM_OUTPUTS],
+}
+
+impl Key {
+    fn start(lookup: &LookupTables) -> Self {
+        Self {
+            arms: [lookup.dir_for('A'), lookup.dir_for('A'), lookup.digit_for('A')],
+            outputs: [None; NUM_OUTPUTS],
+        }
+    }
+
+    fn with_output(&self, c: char) -> Self {
+        let mut i = 0;
+        while self.outputs[i].is_none() {
+            i += 1;
+        }
+        let mut result = self.clone();
+        result.outputs[i] = Some(c);
+        result
+    }
+
+    fn replaced(&self, arm: usize, replacement: Position) -> Self {
+        let mut result = self.clone();
+        result.arms[arm] = replacement;
+        result
+    }
+
+    fn successors(&self, lookup: &LookupTables) -> Vec<Self> {
+        let mut result = vec![];
+        for arm0 in lookup.successor_dirs(self.arms[0]) {
+            if arm0 == self.arms[0] {
+                for arm1 in lookup.successor_dirs(self.arms[1]) {
+                    if arm1 == self.arms[1] {
+                        for arm2 in lookup.successor_digits(self.arms[2]) {
+                            if arm2 == self.arms[2] {
+                                result.push(self.with_output(lookup.digit_key_for(arm2)));
+                            } else {
+                                result.push(self.replaced(2, arm2));
+                            }
+                        }
+                    } else {
+                        result.push(self.replaced(1, arm1));
+                    }
+                }
+            } else {
+                result.push(self.replaced(0, arm0));
+            }         
+        }
+        result
+    }
+}
+
+fn lookups(keypad_str: &str) -> (HashMap<char, Position>, HashMap<Position, char>) {
+    let keypad = keypad_str.parse::<GridCharWorld>().unwrap();
+    let lookup1 = keypad.position_value_iter().filter(|(p, v)| **v != ' ').map(|(p, v)| (*v, *p)).collect::<HashMap<_,_>>();
+    let lookup2 = lookup1.iter().map(|(k, v)| (*v, *k)).collect();
+    (lookup1, lookup2)
+}
+
+fn create_table() -> HashMap<Key, usize> {
+    let lookup = LookupTables::default();
+    let mut searcher = BfsIter::new(Key::start(&lookup), |state| {
+        state.successors(&lookup)
+    });
+
+    searcher.all_depths()
 }
 
 struct System {
