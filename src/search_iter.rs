@@ -30,10 +30,10 @@ impl<T: SearchNode, S: FnMut(&T) -> Vec<T>> BfsIter<T, S> {
         }
     }
 
-    pub fn multi_start<I: Iterator<Item=T>>(starts: I, successor: S) -> Self {
+    pub fn multi_start<I: Iterator<Item = T>>(starts: I, successor: S) -> Self {
         let queue = starts.map(|t| (t, 0)).collect::<VecDeque<_>>();
         let depths = queue.iter().cloned().collect();
-        let parents = queue.iter().map(|(t,_)| (t.clone(), None)).collect();
+        let parents = queue.iter().map(|(t, _)| (t.clone(), None)).collect();
         Self {
             queue,
             depths,
