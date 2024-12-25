@@ -49,6 +49,10 @@ impl<T: SearchNode, S: FnMut(&T) -> Vec<T>> BfsIter<T, S> {
     pub fn depth_for(&self, node: &T) -> usize {
         self.depths.get(node).copied().unwrap()
     }
+
+    pub fn all_depths(&self) -> HashMap<T, usize> {
+        self.depths.clone()
+    }
 }
 
 impl<T: SearchNode, S: FnMut(&T) -> Vec<T>> Iterator for BfsIter<T, S> {
