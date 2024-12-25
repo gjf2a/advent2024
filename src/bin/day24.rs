@@ -514,18 +514,19 @@ fn swap_every_pair(circuit: Circuit) {
             let alternative = circuit.swapped_outputs_for(o1, o2);
             if let Some(swapped_zs) = alternative.bad_zs() {
                 if swapped_zs.iter().all(|z| bad_zs.contains(z)) && swapped_zs.len() < bad_zs.len() {
+                    let remaining_zs = bad_zs.iter().filter(|z| !swapped_zs.contains(z.as_str())).collect_vec();
                     let improvement = bad_zs.len() - swapped_zs.len();
                     improvements.bump(&improvement);
-                    options.push((improvement, o1, o2));
+                    options.push((improvement, o1, o2, remaining_zs));
                     swappees.connect2(o1, o2);
                 }
             }
         }
     }
     let mut compatible = HashMap::new();
-    for (_, a, b) in options.iter().copied() {
+    for (_, a, b, _) in options.iter().cloned() {
         compatible.insert((a, b), vec![]);
-        for (c2, a2, b2) in options.iter().copied() {
+        for (c2, a2, b2, _) in options.iter().cloned() {
             if a != a2 && b != b2 {
                 compatible.get_mut(&(a, b)).unwrap().push((c2, a2, b2));
             }
@@ -536,12 +537,12 @@ fn swap_every_pair(circuit: Circuit) {
     let least_alternatives = compatible.values().map(|v| v.len()).min().unwrap();
     println!("most alternatives: {most_alternatives} (least: {least_alternatives})");
 
-    let options_5 = options.iter().filter(|(c,_,_)| *c == 5).collect_vec();
+    let options_5 = options.iter().filter(|(c,_,_,_)| *c == 5).collect_vec();
     let mut compatible_5 = vec![];
     for i in 0..options_5.len() {
-        let (_, a1, b1) = options_5[i];
+        let (_, a1, b1, _) = options_5[i];
         for j in (i + 1)..options_5.len() {
-            let (_, a2, b2) = options_5[j];
+            let (_, a2, b2, _) = options_5[j];
             if a1 != a2 && b1 != b2 && a1 != b2 && b1 != a2 {
                 compatible_5.push(((*a1, *b1), (*a2, *b2)));
             }
