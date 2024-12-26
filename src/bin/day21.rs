@@ -19,11 +19,19 @@ const DIRECTION_PAD: &str = " ^A
 const NUM_OUTPUTS: usize = 4;
 
 fn main() -> anyhow::Result<()> {
-    advent_main(|filename, part, _| {
+    advent_main(|filename, part, options| {
         println!("{filename} {part:?}");
-        match part {
-            Part::One => solve::<3>(filename),
-            Part::Two => solve::<26>(filename),
+        if options.contains(&"-2") {
+            solve::<2>(filename)
+        } else if options.contains(&"-4") {
+            solve::<4>(filename)
+        } else if options.contains(&"-5") {
+            solve::<5>(filename)
+        } else {
+            match part {
+                Part::One => solve::<3>(filename),
+                Part::Two => solve::<26>(filename),
+            }
         }
     })
 }
