@@ -49,7 +49,6 @@ pub fn advent_main(code: fn(&str, Part, Vec<&str>) -> anyhow::Result<()>) -> any
             .enumerate()
             .find(|(_, a)| a.starts_with("-"))
             .map_or(args.len(), |(i, _)| i);
-        println!("op_start: {op_start}");
         for i in op_start..args.len() {
             options.push(args[i].as_str());
         }
@@ -82,17 +81,6 @@ pub fn log_floor<N: Integer + Copy + DivAssign + AddAssign>(mut num: N, base: N)
     }
     result
 }
-
-/*
-pub fn log_ceiling<P: Integer, N: Integer + Copy + DivAssign + AddAssign + Pow<P>>(num: N, base: N) -> N {
-    let lf = log_floor(num, base);
-    if num > base.pow(lf) {
-        lf + N::one()
-    } else {
-        lf
-    }
-}
-*/
 
 #[cfg(test)]
 mod tests {
@@ -215,12 +203,5 @@ mod tests {
         ] {
             assert_eq!(log_floor(n, 2), l);
         }
-    }
-
-    #[test]
-    fn test_log_ceiling() {
-        //for (n, l) in [(1, 0), (2, 1), (3, 2), (4, 2), (5, 3), (6, 3), (7, 3), (8, 3), (9, 4)] {
-        //assert_eq!(log_ceiling(n, 2), l);
-        //}
     }
 }
