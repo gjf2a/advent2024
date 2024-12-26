@@ -132,7 +132,8 @@ fn height2locations(
             Some(v) => v.push(*p),
         };
         ascending_neighbors(*p, topomap).collect()
-    }).last();
+    })
+    .last();
     height2locations
 }
 
