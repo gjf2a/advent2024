@@ -4,7 +4,7 @@ use advent2024::{
     advent_main,
     grid::GridCharWorld,
     multidim::{Dir, DirType, ManhattanDir, Position},
-    searchers::{breadth_first_search, ContinueSearch, SearchQueue},
+    search_iter::BfsIter,
     Part,
 };
 use enum_iterator::all;
@@ -118,16 +118,14 @@ fn bfs_points2regions(garden: &GridCharWorld) -> HashMap<Position, usize> {
     let mut result = HashMap::new();
     for (p, v) in garden.position_value_iter() {
         if !result.contains_key(p) {
-            breadth_first_search(p, |s, q| {
+            BfsIter::new(*p, |s| {
                 result.insert(*s, current);
-                for d in all::<ManhattanDir>() {
-                    let n = d.neighbor(*s);
-                    if garden.value(n).map_or(false, |c| c == *v) {
-                        q.enqueue(&n);
-                    }
-                }
-                ContinueSearch::Yes
-            });
+                all::<ManhattanDir>()
+                    .map(|d| d.neighbor(*s))
+                    .filter(|n| garden.value(*n).map_or(false, |c| c == *v))
+                    .collect()
+            })
+            .last();
             current += 1;
         }
     }
