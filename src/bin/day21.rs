@@ -191,7 +191,11 @@ impl<const NUM_ROBOTS: usize> Key<NUM_ROBOTS> {
         loop {
             if current_arm == self.arms[n] {
                 if n < NUM_ROBOTS - 1 {
-                    let decoder = if n < NUM_ROBOTS - 2 {&lookup.dir2char} else {&lookup.digit2char};
+                    let decoder = if n < NUM_ROBOTS - 2 {
+                        &lookup.dir2char
+                    } else {
+                        &lookup.digit2char
+                    };
                     let next_arm = lookup.push_level_ahead(
                         lookup.dir_key_for(current_arm),
                         self.arms[n + 1],
