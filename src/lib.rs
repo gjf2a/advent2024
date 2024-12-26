@@ -4,7 +4,6 @@ pub mod graph;
 pub mod grid;
 pub mod multidim;
 pub mod search_iter;
-pub mod searchers;
 
 use std::{
     env,
@@ -89,7 +88,6 @@ mod tests {
     use crate::{
         log_floor,
         multidim::{Dir, DirType, ManhattanDir, Position, RowMajorPositionIterator},
-        searchers::{breadth_first_search, ContinueSearch, SearchQueue},
     };
 
     #[test]
@@ -162,31 +160,6 @@ mod tests {
             assert_eq!(d1.counterclockwise(), d2);
         }
         assert_eq!(d1, ManhattanDir::N);
-    }
-
-    #[test]
-    fn test_bfs() {
-        println!("Test BFS");
-        let max_dist = 2;
-        let start_value = Position::default();
-        println!("Starting BFS");
-        let paths_back = breadth_first_search(&start_value, |p, q| {
-            for n in p
-                .manhattan_neighbors()
-                .iter()
-                .filter(|n| n.manhattan_distance(&start_value) <= max_dist)
-            {
-                q.enqueue(&n);
-            }
-            ContinueSearch::Yes
-        });
-        println!("Search complete.");
-        assert_eq!(paths_back.len(), 13);
-        for node in paths_back.keys() {
-            let len = paths_back.path_back_from(node).unwrap().len();
-            println!("From {:?}: {}", node, len);
-            assert!(len <= 1 + max_dist as usize);
-        }
     }
 
     #[test]

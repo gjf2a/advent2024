@@ -4,7 +4,7 @@ use advent2024::{
     advent_main, all_lines,
     grid::GridCharWorld,
     multidim::{DirType, ManhattanDir, Position},
-    searchers::{breadth_first_search, ContinueSearch, SearchQueue},
+    search_iter::BfsIter,
     Part,
 };
 use enum_iterator::all;
@@ -56,34 +56,29 @@ fn find_impassible(bombs: &Vec<Position>, dim: isize, goal: Position) -> Positio
 }
 
 fn find_exit(fallen_bombs: &BTreeSet<Position>, goal: Position, dim: isize) -> Option<usize> {
-    let mut closest = None;
     let start = Position::default();
     let mut distances = HashMap::<Position, usize>::new();
     distances.insert(start, 0);
-    breadth_first_search(&start, |point, q| {
-        if *point == goal {
-            closest = Some(*point);
-            ContinueSearch::No
-        } else {
-            for dir in all::<ManhattanDir>() {
-                let neighbor = dir.neighbor(*point);
-                if !fallen_bombs.contains(&neighbor)
+    BfsIter::new(start, |point| {
+        all::<ManhattanDir>()
+            .map(|d| d.neighbor(*point))
+            .filter(|neighbor| {
+                !fallen_bombs.contains(neighbor)
                     && neighbor.values().all(|v| v >= 0 && v < dim as isize)
-                {
-                    let parent_distance = distances.get(point).copied().unwrap();
-                    let current_distance = parent_distance + 1;
-                    let prev_distance = distances.get(&neighbor);
-                    if prev_distance.is_none() || current_distance < prev_distance.copied().unwrap()
-                    {
-                        distances.insert(neighbor, current_distance);
-                    }
-                    q.enqueue(&neighbor);
+            })
+            .map(|neighbor| {
+                let parent_distance = distances.get(point).copied().unwrap();
+                let current_distance = parent_distance + 1;
+                let prev_distance = distances.get(&neighbor);
+                if prev_distance.is_none() || current_distance < prev_distance.copied().unwrap() {
+                    distances.insert(neighbor, current_distance);
                 }
-            }
-            ContinueSearch::Yes
-        }
-    });
-    closest.map(|p| distances.get(&p).copied().unwrap())
+                neighbor
+            })
+            .collect()
+    })
+    .find(|p| *p == goal)
+    .map(|p| distances.get(&p).copied().unwrap())
 }
 
 fn view(dim: isize, bombs: &Vec<Position>) {
