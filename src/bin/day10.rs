@@ -5,7 +5,6 @@ use advent2024::{
     grid::GridDigitWorld,
     multidim::{DirType, ManhattanDir, Position},
     search_iter::BfsIter,
-    searchers::{breadth_first_search, ContinueSearch, SearchQueue},
     Part,
 };
 use bare_metal_modulo::{MNum, ModNumC};
@@ -124,7 +123,7 @@ fn height2locations(
     topomap: &GridDigitWorld,
 ) -> BTreeMap<ModNumC<u8, 10>, Vec<Position>> {
     let mut height2locations = BTreeMap::new();
-    breadth_first_search(start, |p, q| {
+    BfsIter::new(*start, |p| {
         let height = topomap.value(*p).unwrap();
         match height2locations.get_mut(&height) {
             None => {
@@ -132,11 +131,8 @@ fn height2locations(
             }
             Some(v) => v.push(*p),
         };
-        for n in ascending_neighbors(*p, topomap) {
-            q.enqueue(&n);
-        }
-        ContinueSearch::Yes
-    });
+        ascending_neighbors(*p, topomap).collect()
+    }).last();
     height2locations
 }
 
