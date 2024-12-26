@@ -1,11 +1,7 @@
 use std::collections::BTreeMap;
 
 use advent2024::{
-    advent_main,
-    grid::GridDigitWorld,
-    multidim::{DirType, ManhattanDir, Position},
-    searchers::{breadth_first_search, ContinueSearch, SearchQueue},
-    Part,
+    advent_main, grid::GridDigitWorld, multidim::{DirType, ManhattanDir, Position}, search_iter::BfsIter, searchers::{breadth_first_search, ContinueSearch, SearchQueue}, Part
 };
 use bare_metal_modulo::{MNum, ModNumC};
 use enum_iterator::all;
@@ -97,17 +93,12 @@ fn original_versions(part: Part, topomap: &GridDigitWorld) {
 
 fn num_reachable_peaks(start: &Position, topomap: &GridDigitWorld) -> usize {
     let mut nine_count = 0;
-    breadth_first_search(start, |p, q| {
-        let height = topomap.value(*p).unwrap();
-        if height == 9 {
+    BfsIter::new(*start, |p| {
+        if topomap.value(*p).unwrap() == 9 {
             nine_count += 1;
-        } else {
-            for n in ascending_neighbors(*p, topomap) {
-                q.enqueue(&n);
-            }
-        }
-        ContinueSearch::Yes
-    });
+        } 
+        ascending_neighbors(*p, topomap).collect()
+    }).last();
     nine_count
 }
 
