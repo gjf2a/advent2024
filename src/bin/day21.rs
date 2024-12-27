@@ -4,7 +4,7 @@ use advent2024::{
     advent_main, all_lines,
     grid::GridCharWorld,
     multidim::{DirType, ManhattanDir, Position},
-    search_iter::BfsIter,
+    search_iter::{BfsIter, PrioritySearchIter},
     Part,
 };
 
@@ -21,7 +21,18 @@ const NUM_OUTPUTS: usize = 4;
 fn main() -> anyhow::Result<()> {
     advent_main(|filename, part, options| {
         println!("{filename} {part:?}");
-        if options.contains(&"-2") {
+        if options.contains(&"-astar") {
+            if options.contains(&"-4") {
+                solve_a_star::<4>(filename)
+            } else if options.contains(&"-5") {
+                solve_a_star::<5>(filename)
+            } else {
+                match part {
+                    Part::One => solve_a_star::<3>(filename),
+                    Part::Two => solve_a_star::<26>(filename),
+                }
+            }
+        } else if options.contains(&"-2") {
             solve::<2>(filename)
         } else if options.contains(&"-4") {
             solve::<4>(filename)
@@ -36,6 +47,23 @@ fn main() -> anyhow::Result<()> {
     })
 }
 
+fn solve_a_star<const NUM_ROBOTS: usize>(filename: &str) -> anyhow::Result<()> {
+    let table = LookupTables::<NUM_ROBOTS>::default();
+    let total = all_lines(filename)?
+        .map(|line| {
+            let min_cost = table.score_for(line.as_str());
+            let line_value = (&line[0..(line.len() - 1)]).parse::<usize>().unwrap();
+            println!(
+                "{line}: {min_cost} * {line_value} = {}",
+                min_cost * line_value
+            );
+            min_cost * line_value
+        })
+        .sum::<usize>();
+    println!("{total}");
+    Ok(())
+}
+
 fn solve<const NUM_ROBOTS: usize>(filename: &str) -> anyhow::Result<()> {
     let table = LookupTables::<NUM_ROBOTS>::default();
     let all_scores = table.find_all_scores();
@@ -43,7 +71,7 @@ fn solve<const NUM_ROBOTS: usize>(filename: &str) -> anyhow::Result<()> {
     let total = all_lines(filename)?
         .map(|line| {
             let min_cost = all_scores.get(&table.end_key(line.as_str()));
-            let line_value = &line[0..(line.len() - 1)].parse::<usize>().unwrap();
+            let line_value = (&line[0..(line.len() - 1)]).parse::<usize>().unwrap();
             let min_cost = min_cost.copied().unwrap();
             println!(
                 "{line}: {min_cost} * {line_value} = {}",
@@ -81,6 +109,25 @@ impl<const NUM_ROBOTS: usize> LookupTables<NUM_ROBOTS> {
         let mut searcher = BfsIter::new(self.start_key(), |state| state.successors(&self));
         searcher.by_ref().last();
         searcher.all_depths()
+    }
+
+    fn score_for(&self, target: &str) -> usize {
+        let mut searcher = PrioritySearchIter::a_star(
+            self.start_key(),
+            |s| s.successors(&self).iter().map(|n| (*n, 1)).collect(),
+            |s| s.estimate_to(target, &self),
+        );
+        let found = searcher
+            .by_ref()
+            .find(|k| {
+                k.outputs
+                    .iter()
+                    .zip(target.chars())
+                    .all(|(c1, c2)| c1.map_or(false, |c| c == c2))
+            })
+            .unwrap();
+        println!("# nodes: {}", searcher.num_nodes_visited());
+        searcher.cost_for(&found)
     }
 
     fn start_key(&self) -> Key<NUM_ROBOTS> {
@@ -215,6 +262,44 @@ impl<const NUM_ROBOTS: usize> Key<NUM_ROBOTS> {
                 return Some(self.replaced(n, current_arm));
             }
         }
+    }
+
+    fn estimate_to(&self, goal: &str, lookup: &LookupTables<NUM_ROBOTS>) -> usize {
+        let mut total_cost = 0;
+        if let Some(current_goal) = goal
+            .char_indices()
+            .find(|(i, _)| *i == self.outputs.len())
+            .map(|(_, c)| c) {
+
+                let mut goal_pos = lookup.digit_for(current_goal);
+                for arm in (1..NUM_ROBOTS).rev() {
+                    let diffs = self.arms[arm] - goal_pos;
+                    let dist = diffs[0].abs() as usize + diffs[1].abs() as usize;
+                    total_cost += dist;
+                    let mut ideas = vec![];
+                    if diffs[0] > 0 {
+                        ideas.push('<');
+                    } else if diffs[0] < 0 {
+                        ideas.push('>');
+                    }
+                    if diffs[1] > 0 {
+                        ideas.push('^');
+                    } else if diffs[1] < 0 {
+                        ideas.push('v');
+                    }
+                    if dist == 0 {
+                        ideas.push('A');
+                    }
+                    goal_pos = lookup.dir_for(ideas[0]);
+                    if ideas.len() > 1 {
+                        let other_pos = lookup.dir_for(ideas[1]);
+                        if other_pos.manhattan_distance(&self.arms[arm - 1]) < goal_pos.manhattan_distance(&self.arms[arm - 1]) {
+                            goal_pos = other_pos;
+                        }
+                    }
+                }
+            }
+            total_cost
     }
 }
 
