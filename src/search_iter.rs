@@ -147,6 +147,10 @@ impl<N: Estimator, T: SearchNode, S: FnMut(&T) -> Vec<(T, N)>, H: Fn(&T) -> N>
     pub fn cost_for(&self, node: &T) -> N {
         self.costs.get(node).copied().unwrap()
     }
+
+    pub fn num_nodes_visited(&self) -> usize {
+        self.costs.len()
+    }
 }
 
 impl<N: Estimator, T: SearchNode, S: FnMut(&T) -> Vec<(T, N)>>
