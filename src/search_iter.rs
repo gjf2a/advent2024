@@ -116,7 +116,7 @@ pub struct PrioritySearchIter<
     N: Estimator,
     T: SearchNode,
     S: FnMut(&T) -> Vec<(T, N)>,
-    H: Fn(&T) -> N,
+    H: Fn(&T) -> Option<N>,
 > {
     queue: PriorityQueue<T, TotalEstimate<N>>,
     costs: HashMap<T, N>,
@@ -125,7 +125,7 @@ pub struct PrioritySearchIter<
     heuristic: H,
 }
 
-impl<N: Estimator, T: SearchNode, S: FnMut(&T) -> Vec<(T, N)>, H: Fn(&T) -> N>
+impl<N: Estimator, T: SearchNode, S: FnMut(&T) -> Vec<(T, N)>, H: Fn(&T) -> Option<N>>
     PrioritySearchIter<N, T, S, H>
 {
     pub fn a_star(start: T, successor: S, heuristic: H) -> Self {
@@ -154,14 +154,14 @@ impl<N: Estimator, T: SearchNode, S: FnMut(&T) -> Vec<(T, N)>, H: Fn(&T) -> N>
 }
 
 impl<N: Estimator, T: SearchNode, S: FnMut(&T) -> Vec<(T, N)>>
-    PrioritySearchIter<N, T, S, fn(&T) -> N>
+    PrioritySearchIter<N, T, S, fn(&T) -> Option<N>>
 {
     pub fn dijkstra(start: T, successor: S) -> Self {
-        Self::a_star(start, successor, |_| N::zero())
+        Self::a_star(start, successor, |_| Some(N::zero()))
     }
 }
 
-impl<N: Estimator, T: SearchNode, S: FnMut(&T) -> Vec<(T, N)>, H: Fn(&T) -> N> Iterator
+impl<N: Estimator, T: SearchNode, S: FnMut(&T) -> Vec<(T, N)>, H: Fn(&T) -> Option<N>> Iterator
     for PrioritySearchIter<N, T, S, H>
 {
     type Item = T;
@@ -171,17 +171,19 @@ impl<N: Estimator, T: SearchNode, S: FnMut(&T) -> Vec<(T, N)>, H: Fn(&T) -> N> I
             self.costs.insert(parent.clone(), cost.from_start);
             for (child, step_cost) in (self.successor)(&parent) {
                 if !self.costs.contains_key(&child) {
-                    let new_priority = cost.next_cost(step_cost, (self.heuristic)(&child));
-                    match self.queue.get_priority(&child) {
-                        Some(priority) => {
-                            if new_priority > *priority {
-                                self.parents.insert(child.clone(), Some(parent.clone()));
-                                self.queue.change_priority(&child, new_priority);
+                    if let Some(estimate) = (self.heuristic)(&child) {
+                        let new_priority = cost.next_cost(step_cost, estimate);
+                        match self.queue.get_priority(&child) {
+                            Some(priority) => {
+                                if new_priority > *priority {
+                                    self.parents.insert(child.clone(), Some(parent.clone()));
+                                    self.queue.change_priority(&child, new_priority);
+                                }
                             }
-                        }
-                        None => {
-                            self.parents.insert(child.clone(), Some(parent.clone()));
-                            self.queue.push(child, new_priority);
+                            None => {
+                                self.parents.insert(child.clone(), Some(parent.clone()));
+                                self.queue.push(child, new_priority);
+                            }
                         }
                     }
                 }

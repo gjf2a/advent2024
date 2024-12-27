@@ -119,12 +119,7 @@ impl<const NUM_ROBOTS: usize> LookupTables<NUM_ROBOTS> {
         );
         let found = searcher
             .by_ref()
-            .find(|k| {
-                k.outputs
-                    .iter()
-                    .zip(target.chars())
-                    .all(|(c1, c2)| c1.map_or(false, |c| c == c2))
-            })
+            .find(|k| k.output_matches(target))
             .unwrap();
         println!("# nodes: {}", searcher.num_nodes_visited());
         searcher.cost_for(&found)
@@ -264,13 +259,10 @@ impl<const NUM_ROBOTS: usize> Key<NUM_ROBOTS> {
         }
     }
 
-    fn estimate_to(&self, goal: &str, lookup: &LookupTables<NUM_ROBOTS>) -> usize {
+    fn estimate_to(&self, goal: &str, lookup: &LookupTables<NUM_ROBOTS>) -> Option<usize> {
         let mut total_cost = 0;
-        if let Some(current_goal) = goal
-            .char_indices()
-            .find(|(i, _)| *i == self.outputs.len())
-            .map(|(_, c)| c) {
-
+        let current_goal = goal.chars().zip(self.outputs.iter()).find(|(_, oc)| oc.is_none()).map(|(gc,_)| gc);
+        if let Some(current_goal) = current_goal {
                 let mut goal_pos = lookup.digit_for(current_goal);
                 for arm in (1..NUM_ROBOTS).rev() {
                     let diffs = self.arms[arm] - goal_pos;
@@ -298,8 +290,20 @@ impl<const NUM_ROBOTS: usize> Key<NUM_ROBOTS> {
                         }
                     }
                 }
+                Some(total_cost)
+            } else if self.output_matches(goal) {
+                println!("Succeeded at {goal}");
+                Some(0)
+            } else {
+                None
             }
-            total_cost
+    }
+
+    fn output_matches(&self, target: &str) -> bool {
+        self.outputs
+        .iter()
+        .zip(target.chars())
+        .all(|(c1, c2)| c1.map_or(false, |c| c == c2))
     }
 }
 
