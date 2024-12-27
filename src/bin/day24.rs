@@ -6,7 +6,7 @@ use std::{
 
 use advent2024::{
     advent_main, all_lines,
-    graph::AdjacencySets,
+    graph::{graphviz_directed, AdjacencySets},
     search_iter::{BfsIter, PrioritySearchIter},
     Part,
 };
@@ -26,6 +26,9 @@ fn main() -> anyhow::Result<()> {
             show_single_ancestors(circuit);
         } else if options.contains(&"-swapall") {
             swap_every_pair(circuit);
+        } else if options.contains(&"-dot") {
+            let graph = circuit.directed_edges();
+            graphviz_directed(graph.iter().cloned(), "day24.dot")?;
         } else {
             match part {
                 Part::One => part1(circuit),
@@ -227,8 +230,8 @@ fn part2(circuit: Circuit) {
             v
         },
         |c| match c.bad_zs() {
-            None => max_bad * 2,
-            Some(bz) => bz.len(),
+            None => Some(max_bad * 2),
+            Some(bz) => Some(bz.len()),
         },
     );
     let winner = searcher
@@ -265,6 +268,23 @@ impl Circuit {
             .map(|g| (g.output().to_string(), g))
             .collect();
         Ok(Self { values, pending })
+    }
+
+    fn directed_edges(&self) -> Vec<(String, String)> {
+        let mut graph = vec![];
+        BfsIter::multi_start(
+            self.pending.keys().cloned().filter(|k| k.starts_with("z")),
+            |output| match self.pending.get(output) {
+                None => vec![],
+                Some(gate) => {
+                    graph.push((gate.args().a.clone(), output.clone()));
+                    graph.push((gate.args().b.clone(), output.clone()));
+                    vec![gate.args().a.clone(), gate.args().b.clone()]
+                }
+            },
+        )
+        .last();
+        graph
     }
 
     fn extract_num_with(&self, prefix: &str) -> u128 {

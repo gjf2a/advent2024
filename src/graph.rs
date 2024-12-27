@@ -1,9 +1,12 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
+    fmt::Display,
     iter::repeat,
 };
 
 use common_macros::b_tree_set;
+
+use std::io::Write;
 
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
 pub struct AdjacencySets {
@@ -71,6 +74,35 @@ impl AdjacencySets {
             }
         }
     }
+}
+
+pub fn graphviz_undirected<N: Display, I: Iterator<Item = (N, N)>>(
+    items: I,
+    output_filename: &str,
+) -> anyhow::Result<()> {
+    graphviz(items, output_filename, "graph", "--")
+}
+
+pub fn graphviz_directed<N: Display, I: Iterator<Item = (N, N)>>(
+    items: I,
+    output_filename: &str,
+) -> anyhow::Result<()> {
+    graphviz(items, output_filename, "digraph", "->")
+}
+
+fn graphviz<N: Display, I: Iterator<Item = (N, N)>>(
+    items: I,
+    output_filename: &str,
+    header: &str,
+    edge: &str,
+) -> anyhow::Result<()> {
+    let mut file_out = std::fs::File::create(output_filename)?;
+    writeln!(file_out, "{header} G {{")?;
+    for (src, dest) in items {
+        writeln!(file_out, "  {src} {edge} {dest}")?;
+    }
+    writeln!(file_out, "}}")?;
+    Ok(())
 }
 
 #[cfg(test)]
