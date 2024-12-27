@@ -261,49 +261,54 @@ impl<const NUM_ROBOTS: usize> Key<NUM_ROBOTS> {
 
     fn estimate_to(&self, goal: &str, lookup: &LookupTables<NUM_ROBOTS>) -> Option<usize> {
         let mut total_cost = 0;
-        let current_goal = goal.chars().zip(self.outputs.iter()).find(|(_, oc)| oc.is_none()).map(|(gc,_)| gc);
+        let current_goal = goal
+            .chars()
+            .zip(self.outputs.iter())
+            .find(|(_, oc)| oc.is_none())
+            .map(|(gc, _)| gc);
         if let Some(current_goal) = current_goal {
-                let mut goal_pos = lookup.digit_for(current_goal);
-                for arm in (1..NUM_ROBOTS).rev() {
-                    let diffs = self.arms[arm] - goal_pos;
-                    let dist = diffs[0].abs() as usize + diffs[1].abs() as usize;
-                    total_cost += dist;
-                    let mut ideas = vec![];
-                    if diffs[0] > 0 {
-                        ideas.push('<');
-                    } else if diffs[0] < 0 {
-                        ideas.push('>');
-                    }
-                    if diffs[1] > 0 {
-                        ideas.push('^');
-                    } else if diffs[1] < 0 {
-                        ideas.push('v');
-                    }
-                    if dist == 0 {
-                        ideas.push('A');
-                    }
-                    goal_pos = lookup.dir_for(ideas[0]);
-                    if ideas.len() > 1 {
-                        let other_pos = lookup.dir_for(ideas[1]);
-                        if other_pos.manhattan_distance(&self.arms[arm - 1]) < goal_pos.manhattan_distance(&self.arms[arm - 1]) {
-                            goal_pos = other_pos;
-                        }
+            let mut goal_pos = lookup.digit_for(current_goal);
+            for arm in (1..NUM_ROBOTS).rev() {
+                let diffs = self.arms[arm] - goal_pos;
+                let dist = diffs[0].abs() as usize + diffs[1].abs() as usize;
+                total_cost += dist;
+                let mut ideas = vec![];
+                if diffs[0] > 0 {
+                    ideas.push('<');
+                } else if diffs[0] < 0 {
+                    ideas.push('>');
+                }
+                if diffs[1] > 0 {
+                    ideas.push('^');
+                } else if diffs[1] < 0 {
+                    ideas.push('v');
+                }
+                if dist == 0 {
+                    ideas.push('A');
+                }
+                goal_pos = lookup.dir_for(ideas[0]);
+                if ideas.len() > 1 {
+                    let other_pos = lookup.dir_for(ideas[1]);
+                    if other_pos.manhattan_distance(&self.arms[arm - 1])
+                        < goal_pos.manhattan_distance(&self.arms[arm - 1])
+                    {
+                        goal_pos = other_pos;
                     }
                 }
-                Some(total_cost)
-            } else if self.output_matches(goal) {
-                println!("Succeeded at {goal}");
-                Some(0)
-            } else {
-                None
             }
+            Some(total_cost)
+        } else if self.output_matches(goal) {
+            Some(0)
+        } else {
+            None
+        }
     }
 
     fn output_matches(&self, target: &str) -> bool {
         self.outputs
-        .iter()
-        .zip(target.chars())
-        .all(|(c1, c2)| c1.map_or(false, |c| c == c2))
+            .iter()
+            .zip(target.chars())
+            .all(|(c1, c2)| c1.map_or(false, |c| c == c2))
     }
 }
 
