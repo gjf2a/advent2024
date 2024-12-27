@@ -274,7 +274,7 @@ mod tests {
                     .map(|p| (p, 1))
                     .collect()
             },
-            |p| exit.manhattan_distance(p),
+            |p| Some(exit.manhattan_distance(p)),
         );
         let result = searcher.by_ref().find(|p| *p == exit).unwrap();
         assert_eq!(result, exit);
