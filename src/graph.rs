@@ -76,6 +76,9 @@ impl AdjacencySets {
     }
 }
 
+// graphviz:
+// To view the generated file, use:
+//   dot -Tpng -Kneato -O [filename]
 pub fn graphviz_undirected<N: Display, I: Iterator<Item = (N, N)>>(
     items: I,
     output_filename: &str,
