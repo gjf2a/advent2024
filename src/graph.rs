@@ -1,12 +1,16 @@
 use std::{
-    collections::{BTreeMap, BTreeSet},
+    collections::{BTreeMap, BTreeSet, HashMap},
     fmt::Display,
     iter::repeat,
 };
 
 use common_macros::b_tree_set;
+use hash_histogram::HashHistogram;
+use itertools::Itertools;
 
 use std::io::Write;
+
+use crate::search_iter::BfsIter;
 
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
 pub struct AdjacencySets {
@@ -50,6 +54,14 @@ impl AdjacencySets {
         })
     }
 
+    pub fn graphviz(&self, filename: &str) -> anyhow::Result<()> {
+        if self.is_directed() {
+            graphviz_directed(self.pairs(), filename)
+        } else {
+            graphviz_undirected(self.pairs(), filename)
+        }
+    }
+
     pub fn neighbors_of(&self, node: &str) -> impl Iterator<Item = &str> {
         self.graph.get(node).unwrap().iter().map(|s| s.as_str())
     }
@@ -72,6 +84,67 @@ impl AdjacencySets {
             Some(connections) => {
                 connections.insert(end.to_string());
             }
+        }
+        if !self.graph.contains_key(end) {
+            self.graph.insert(end.to_string(), BTreeSet::new());
+        }
+    }
+
+    pub fn in_degrees(&self) -> HashMap<String, usize> {
+        self.degrees(
+            self.pairs()
+                .map(|(_, dest)| dest)
+                .collect::<HashHistogram<_>>(),
+        )
+    }
+
+    pub fn out_degrees(&self) -> HashMap<String, usize> {
+        self.degrees(
+            self.pairs()
+                .map(|(src, _)| src)
+                .collect::<HashHistogram<_>>(),
+        )
+    }
+
+    fn degrees(&self, above_zero: HashHistogram<&str>) -> HashMap<String, usize> {
+        let mut result = above_zero
+            .iter()
+            .map(|(s, c)| (s.to_string(), *c))
+            .collect::<HashMap<_, _>>();
+        for v in self.graph.keys() {
+            if !result.contains_key(v) {
+                result.insert(v.clone(), 0);
+            }
+        }
+        result
+    }
+
+    // Kahn's Algorithm
+    // Returns None if the graph contains a cycle.
+    pub fn topologial_ordering(&self) -> Option<Vec<String>> {
+        let mut in_degrees = self.in_degrees();
+        let source_nodes = in_degrees
+            .iter()
+            .filter(|(_, c)| **c == 0)
+            .map(|(n, _)| n.clone())
+            .collect_vec();
+        let visited = BfsIter::multi_start(source_nodes.iter().cloned(), |n| {
+            let mut next = vec![];
+            println!("visiting {n}");
+            for neighbor in self.neighbors_of(n.as_str()) {
+                let count = in_degrees.get_mut(neighbor).unwrap();
+                *count -= 1;
+                if *count == 0 {
+                    next.push(neighbor.to_string());
+                }
+            }
+            next
+        })
+        .collect_vec();
+        if visited.len() == self.len() {
+            Some(visited)
+        } else {
+            None
         }
     }
 }
