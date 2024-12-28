@@ -1,4 +1,3 @@
-pub mod combinations;
 pub mod extended_euclid;
 pub mod graph;
 pub mod grid;
