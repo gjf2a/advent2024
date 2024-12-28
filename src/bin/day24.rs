@@ -1,6 +1,5 @@
 use std::{
-    collections::{BTreeMap, BTreeSet, HashMap},
-    str::FromStr,
+    collections::{BTreeMap, BTreeSet, HashMap}, fmt::Display, str::FromStr, sync::Arc
 };
 
 use advent2024::{
@@ -161,6 +160,10 @@ impl Circuit {
         self.pending.get(var).unwrap().clone()
     }
 
+    fn outputs_for(&self, in1: &str, in2: &str) -> Vec<Gate> {
+        self.pending.iter().filter(|(_, gate)| gate.args().a == in1 && gate.args().b == in2 || gate.args().b == in1 && gate.args().a == in2).map(|(_,g)| g.clone()).collect()
+    }
+
     fn swapped_outputs_for(&self, o1: &str, o2: &str) -> Self {
         Self {
             values: self.values.clone(),
@@ -257,6 +260,42 @@ impl Circuit {
             .map(|a| a.iter().next().unwrap().clone())
             .unwrap()
     }
+
+    fn z_adder_report(&self, z: &str) {
+        let z_gate = self.pending.get(z).unwrap();
+        
+        let suffix = &z[1..];
+        let x = format!("x{suffix}");
+        let y = format!("y{suffix}");
+        let xys = self.outputs_for(x.as_str(), y.as_str());
+        let mut carry_xy = None;
+        let mut xyz = None;
+        for xy in xys.iter() {
+            if z_gate.has_input(xy.output()) {
+                if xyz.is_some() {
+                    println!("xyz conflict!");
+                }
+                xyz = Some(xy.clone());
+                println!("XOR {xy}");
+            } else {
+                if carry_xy.is_some() {
+                    println!("carry_xy conflict!");
+                }
+                carry_xy = Some(xy.clone());
+                println!("AND {xy}");
+            }
+        }
+
+        let mut other_z_in = None;
+        if let Some(xyz) = xyz {
+            if z_gate.args().a == xyz.output() {
+                other_z_in = Some(z_gate.args().b.clone());
+            } else if z_gate.args().b == xyz.output() {
+                other_z_in = Some(z_gate.args().a.clone());
+            }
+        }
+
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
@@ -281,6 +320,12 @@ enum Gate {
     And(Args),
     Or(Args),
     Xor(Args),
+}
+
+impl Display for Gate {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} {} {} -> {}", self.args().a, self.type_name(), self.args().b, self.args().c)
+    }
 }
 
 impl Gate {
