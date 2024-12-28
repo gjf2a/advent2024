@@ -7,7 +7,7 @@ use std::{
 use advent2024::{
     advent_main, all_lines,
     graph::{graphviz_directed, AdjacencySets},
-    search_iter::{BfsIter, PrioritySearchIter},
+    search_iter::BfsIter,
     Part,
 };
 use anyhow::anyhow;
@@ -20,8 +20,6 @@ fn main() -> anyhow::Result<()> {
         let circuit = Circuit::from_file(filename)?;
         if options.contains(&"-showzs") {
             show_bad_zs(circuit);
-        } else if options.contains(&"-alt") {
-            alt(filename, part)?;
         } else if options.contains(&"-singles") {
             show_single_ancestors(circuit);
         } else if options.contains(&"-swapall") {
@@ -39,212 +37,51 @@ fn main() -> anyhow::Result<()> {
     })
 }
 
-fn alt(filename: &str, part: Part) -> anyhow::Result<()> {
-    let encoding = CircuitEncoding::from_file(filename)?;
-    match part {
-        Part::One => {
-            let mut state = encoding.circuit();
-            state.run_to_completion(&encoding);
-            println!("{state:?}");
-            println!("{}", state.output_for("z", &encoding));
-        }
-        Part::Two => {
-            todo!()
-        }
-    }
-    Ok(())
-}
-
-#[derive(Default, Debug)]
-struct CircuitEncoding {
-    names: Vec<String>,
-    name_encodings: HashMap<String, usize>,
-    starts: Vec<u128>,
-    successors: Vec<Vec<usize>>,
-    ands: HashMap<usize, (usize, usize)>,
-    iors: HashMap<usize, (usize, usize)>,
-    xors: HashMap<usize, (usize, usize)>,
-    named: BTreeMap<String, BTreeMap<String, usize>>,
-}
-
-impl CircuitEncoding {
-    fn from_file(filename: &str) -> anyhow::Result<Self> {
-        let mut result = CircuitEncoding::default();
-        for pre in ["x", "y", "z"] {
-            result.named.insert(pre.to_string(), BTreeMap::new());
-        }
-
-        let mut lines = all_lines(filename)?;
-        for line in lines.by_ref().take_while(|line| line.len() > 0) {
-            let (name, value) = line.split(": ").collect_tuple().unwrap();
-            result.add_name(name);
-            result.starts.push(value.parse().unwrap());
-        }
-
-        for line in lines {
-            let (a, op, b, _, c) = line.split_whitespace().collect_tuple().unwrap();
-            let a = result.add_name(a);
-            let b = result.add_name(b);
-            let c = result.add_name(c);
-            let op_map = match op {
-                "AND" => &mut result.ands,
-                "OR" => &mut result.iors,
-                "XOR" => &mut result.xors,
-                _ => panic!("No match"),
-            };
-            op_map.insert(c, (a, b));
-        }
-
-        Ok(result)
-    }
-
-    fn circuit(&self) -> EncodedCircuit {
-        let values = (0..self.names.len())
-            .map(|i| self.starts.get(i).copied())
-            .collect();
-        EncodedCircuit {
-            values,
-            swaps: vec![],
-        }
-    }
-
-    fn inputs_for(&self, id_num: usize) -> (usize, usize) {
-        for op_map in [&self.ands, &self.iors, &self.xors] {
-            if let Some(p) = op_map.get(&id_num) {
-                return *p;
-            }
-        }
-        panic!("Bad id num: {id_num}");
-    }
-
-    fn eval(&self, id_num: usize, a: u128, b: u128) -> u128 {
-        if self.ands.contains_key(&id_num) {
-            a & b
-        } else if self.iors.contains_key(&id_num) {
-            a | b
-        } else if self.xors.contains_key(&id_num) {
-            a ^ b
-        } else {
-            panic!("{id_num} is not an op");
-        }
-    }
-
-    fn add_name(&mut self, name: &str) -> usize {
-        match self.name_encodings.get(name) {
-            Some(i) => *i,
-            None => {
-                let i = self.names.len();
-                self.name_encodings.insert(name.to_string(), i);
-                self.names.push(name.to_string());
-                self.successors.push(vec![]);
-
-                if let Some(index) = self.named.get_mut(&name[0..1]) {
-                    index.insert(name.to_string(), i);
-                }
-                i
-            }
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-struct EncodedCircuit {
-    values: Vec<Option<u128>>,
-    swaps: Vec<(usize, usize)>,
-}
-
-impl EncodedCircuit {
-    fn run_to_completion(&mut self, encoding: &CircuitEncoding) -> bool {
-        BfsIter::multi_start(0..encoding.starts.len(), |id_num| {
-            let mut successors = vec![];
-            for s in encoding.successors[*id_num].iter() {
-                let out = match self.swap_for(*s) {
-                    Some(other) => other,
-                    None => *s,
-                };
-                let (a, b) = encoding.inputs_for(out);
-                if let Some(a) = self.values[a] {
-                    if let Some(b) = self.values[b] {
-                        self.values[out] = Some(encoding.eval(out, a, b));
-                        successors.push(out);
-                    }
-                }
-            }
-            successors
-        });
-        self.values.iter().all(|v| v.is_some())
-    }
-
-    fn swap_for(&self, i: usize) -> Option<usize> {
-        self.swaps
-            .iter()
-            .flat_map(|(a, b)| {
-                if i == *a {
-                    Some(*b)
-                } else if i == *b {
-                    Some(*a)
-                } else {
-                    None
-                }
-            })
-            .next()
-    }
-
-    fn output_for(&self, key: &str, encoding: &CircuitEncoding) -> u128 {
-        encoding
-            .named
-            .get(key)
-            .unwrap()
-            .iter()
-            .map(|(_, v)| self.values[*v].unwrap())
-            .reduce(|a, b| a << 1 + b)
-            .unwrap()
-    }
-}
-
 fn part1(mut circuit: Circuit) {
     circuit.run_to_completion();
     println!("{}", circuit.extract_num_with("z"));
 }
 
 fn part2(circuit: Circuit) {
-    let bad_zs = circuit.bad_zs().unwrap();
-    let max_bad = bad_zs.len();
-    let mut searcher = PrioritySearchIter::a_star(
-        circuit.clone(),
-        |c| {
-            let all_ancestors = c.bad_z_ancestors();
-            let mut v = vec![];
-            for i in 0..all_ancestors.len() {
-                for j in (i + 1)..all_ancestors.len() {
-                    let o1 = all_ancestors[i].output();
-                    let o2 = all_ancestors[j].output();
-                    let alternative = circuit.swapped_outputs_for(o1, o2);
-                    if let Some(swapped_zs) = alternative.bad_zs() {
-                        if swapped_zs.len() < bad_zs.len() {
-                            v.push((alternative, 1));
+    let mut graph = AdjacencySets::default();
+    for (src, dest) in circuit.directed_edges() {
+        graph.connect(src.as_str(), dest.as_str());
+    }
+    let graph = graph;
+    let in_degrees = graph.in_degrees();
+    let mut best_circuit = circuit.clone();
+    let mut best_zs = circuit.bad_zs().unwrap();
+    let mut swapped = BTreeSet::new();
+    let topo = graph.topologial_ordering().unwrap();
+    let topo_output = topo
+        .iter()
+        .filter(|s| *(in_degrees.get(*s).unwrap()) == 2)
+        .cloned()
+        .collect_vec();
+    for i in 0..topo_output.len() {
+        println!("{}: {}/{}", topo_output[i], (i + 1), topo_output.len());
+        for j in (i + 1)..topo_output.len() {
+            if !swapped.contains(topo_output[i].as_str()) {
+                if !swapped.contains(topo_output[j].as_str()) {
+                    //println!("\t{}: {}/{}", topo_output[j], (j + 1), topo_output.len());
+                    let test =
+                        best_circuit.swapped_outputs_for(topo_output[i].as_str(), topo_output[j].as_str());
+                    if let Some(test_zs) = test.bad_zs() {
+                        if test_zs.len() < best_zs.len() {
+                            best_circuit = test;
+                            best_zs = test_zs;
+                            println!("swapping {} and {} ({} bad zs)", topo_output[i], topo_output[j], best_zs.len());
+                            swapped.insert(topo_output[i].to_string());
+                            swapped.insert(topo_output[j].to_string());
                         }
                     }
                 }
             }
-            v
-        },
-        |c| match c.bad_zs() {
-            None => Some(max_bad * 2),
-            Some(bz) => Some(bz.len()),
-        },
-    );
-    let winner = searcher
-        .by_ref()
-        .find(|c| c.bad_zs().map_or(max_bad, |zs| zs.len()) == 0)
-        .unwrap();
-    let changes = winner
-        .pending
-        .iter()
-        .filter(|(o, g)| circuit.pending.get(o.as_str()).unwrap() != *g)
-        .map(|(o, _)| o.to_string())
-        .collect::<BTreeSet<_>>();
-    let output = changes.iter().join(",");
+
+        }
+    }
+
+    let output = swapped.iter().join(",");
     println!("{output}");
 }
 
@@ -519,6 +356,7 @@ fn show_bad_zs(circuit: Circuit) {
     let wrong = z ^ goal;
     println!("{wrong:#b}");
     println!("{:?}", circuit.bad_zs());
+
     let union = circuit.bad_z_ancestors();
     println!(
         "union size: {} ({} gates total)",
