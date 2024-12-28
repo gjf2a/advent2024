@@ -1,7 +1,6 @@
 use std::{
-    collections::{BTreeMap, BTreeSet, HashMap},
+    collections::{BTreeMap, BTreeSet},
     str::FromStr,
-    time::Instant,
 };
 
 use advent2024::{
@@ -11,8 +10,6 @@ use advent2024::{
     Part,
 };
 use anyhow::anyhow;
-use common_macros::b_tree_map;
-use hash_histogram::HashHistogram;
 use itertools::Itertools;
 
 fn main() -> anyhow::Result<()> {
@@ -22,8 +19,6 @@ fn main() -> anyhow::Result<()> {
             show_bad_zs(circuit);
         } else if options.contains(&"-singles") {
             show_single_ancestors(circuit);
-        } else if options.contains(&"-swapall") {
-            swap_every_pair(circuit);
         } else if options.contains(&"-dot") {
             let graph = circuit.directed_edges();
             graphviz_directed(graph.iter().cloned(), "day24.dot")?;
@@ -49,40 +44,49 @@ fn part2(circuit: Circuit) {
     }
     let graph = graph;
     let in_degrees = graph.in_degrees();
-    let mut best_circuit = circuit.clone();
-    let mut best_zs = circuit.bad_zs().unwrap();
-    let mut swapped = BTreeSet::new();
     let topo = graph.topologial_ordering().unwrap();
     let topo_output = topo
         .iter()
         .filter(|s| *(in_degrees.get(*s).unwrap()) == 2)
         .cloned()
         .collect_vec();
-    for i in 0..topo_output.len() {
-        println!("{}: {}/{}", topo_output[i], (i + 1), topo_output.len());
-        for j in (i + 1)..topo_output.len() {
-            if !swapped.contains(topo_output[i].as_str()) {
-                if !swapped.contains(topo_output[j].as_str()) {
-                    //println!("\t{}: {}/{}", topo_output[j], (j + 1), topo_output.len());
-                    let test =
-                        best_circuit.swapped_outputs_for(topo_output[i].as_str(), topo_output[j].as_str());
-                    if let Some(test_zs) = test.bad_zs() {
-                        if test_zs.len() < best_zs.len() {
-                            best_circuit = test;
-                            best_zs = test_zs;
-                            println!("swapping {} and {} ({} bad zs)", topo_output[i], topo_output[j], best_zs.len());
-                            swapped.insert(topo_output[i].to_string());
-                            swapped.insert(topo_output[j].to_string());
-                        }
-                    }
+    let pairs = BTreeMap::new();
+    if !search(&circuit, &topo_output, 0, &pairs) {
+        println!("Failed");
+    }
+}
+
+fn search(circuit: &Circuit, topo_output: &Vec<String>, start: usize, pairs: &BTreeMap<String,String>) -> bool {
+    if pairs.len() == 4 {
+        let test = circuit.swapped_output_pairs(&pairs);
+        if let Some(bad_zs) = test.bad_zs() {
+            if bad_zs.len() == 0 {
+                let mut result = BTreeSet::new();
+                for (k, v) in pairs.iter() {
+                    result.insert(k);
+                    result.insert(v);
+                }
+                let output = result.iter().join(",");
+                println!("{output}");
+                return true;
+            }
+        }
+        false
+    } else {
+        for i in start..topo_output.len() {
+            for j in (i + 1)..topo_output.len() {
+                if start == 0 {
+                    println!("From ({}, {})", i, j);
+                }
+                let mut pairs = pairs.clone();
+                pairs.insert(topo_output[i].to_string(), topo_output[j].to_string());
+                if search(circuit, topo_output, j + 1, &pairs) {
+                    return true;
                 }
             }
-
         }
+        false
     }
-
-    let output = swapped.iter().join(",");
-    println!("{output}");
 }
 
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
@@ -172,17 +176,17 @@ impl Circuit {
         }
     }
 
-    fn swapped_output_pairs(&self, pairs: &BTreeMap<&&str, &&str>) -> Self {
+    fn swapped_output_pairs(&self, pairs: &BTreeMap<String, String>) -> Self {
         Self {
             values: self.values.clone(),
             pending: self
                 .pending
                 .iter()
-                .map(|(o, g)| match pairs.get(&o.as_str()) {
+                .map(|(o, g)| match pairs.get(o.as_str()) {
                     None => (o.clone(), g.clone()),
                     Some(sub) => (
                         o.clone(),
-                        self.pending.get(**sub).unwrap().with_new_output(o),
+                        self.pending.get(sub.as_str()).unwrap().with_new_output(o),
                     ),
                 })
                 .collect(),
@@ -422,110 +426,4 @@ fn show_single_ancestors(mut circuit: Circuit) {
         .filter(|o| *circuit.values.get(o.as_str()).unwrap() == 1)
         .count();
     println!("All: Ones: {ones} Zeros: {}", all_outputs.len() - ones);
-}
-
-fn swap_every_pair(circuit: Circuit) {
-    let bad_zs = circuit.bad_zs().unwrap();
-    let mut bad_z_options = bad_zs
-        .iter()
-        .map(|z| (z, vec![]))
-        .collect::<HashMap<_, _>>();
-    let all_ancestors = circuit.bad_z_ancestors();
-
-    let mut improvements = HashHistogram::<usize>::new();
-    let mut options = HashMap::new();
-    let mut swappees = AdjacencySets::default();
-    for i in 0..all_ancestors.len() {
-        for j in (i + 1)..all_ancestors.len() {
-            let o1 = all_ancestors[i].output();
-            let o2 = all_ancestors[j].output();
-            let alternative = circuit.swapped_outputs_for(o1, o2);
-            if let Some(swapped_zs) = alternative.bad_zs() {
-                if swapped_zs.iter().all(|z| bad_zs.contains(z)) && swapped_zs.len() < bad_zs.len()
-                {
-                    for z in swapped_zs.iter() {
-                        bad_z_options.get_mut(z).unwrap().push((o1, o2));
-                    }
-                    let remaining_zs = bad_zs
-                        .iter()
-                        .filter(|z| !swapped_zs.contains(z.as_str()))
-                        .collect_vec();
-                    let improvement = bad_zs.len() - swapped_zs.len();
-                    improvements.bump(&improvement);
-                    options.insert((o1, o2), remaining_zs);
-                    swappees.connect2(o1, o2);
-                }
-            }
-        }
-    }
-    let mut compatible = HashMap::new();
-    for ((a, b), zs) in options.iter() {
-        compatible.insert((a, b), vec![]);
-        for ((a2, b2), zs2) in options.iter() {
-            if a != a2 && b != b2 && zs.iter().all(|z| !zs2.contains(z)) {
-                compatible.get_mut(&(a, b)).unwrap().push((a2, b2));
-            }
-        }
-    }
-    println!("improved: {:?}", improvements.ranking_with_counts());
-    let most_alternatives = compatible.values().map(|v| v.len()).max().unwrap();
-    let least_alternatives = compatible.values().map(|v| v.len()).min().unwrap();
-    println!("most alternatives: {most_alternatives} (least: {least_alternatives})");
-
-    let start = Instant::now();
-    for (opt, ((a, b), zs)) in options.iter().enumerate() {
-        let elapsed = Instant::now().duration_since(start).as_secs_f32();
-        println!("Considering option {opt} / {} ({elapsed}s)", options.len());
-        let zs = zs.iter().collect::<BTreeSet<_>>();
-        let swaps = b_tree_map![a => b, b => a];
-        let compat = compatible.get(&(a, b)).unwrap();
-        for i in 0..compat.len() {
-            let mut swaps_i = swaps.clone();
-            let (ai, bi) = compat[i];
-            swaps_i.insert(ai, bi);
-            swaps_i.insert(bi, ai);
-            let mut zs_i = zs.clone();
-            for z in options.get(&(ai, bi)).unwrap().iter() {
-                zs_i.insert(z);
-            }
-            for j in (i + 1)..compat.len() {
-                let (aj, bj) = compat[j];
-                if !swaps_i.contains_key(aj) && !swaps_i.contains_key(bj) {
-                    let mut swaps_j = swaps_i.clone();
-                    swaps_j.insert(aj, bj);
-                    swaps_j.insert(bj, aj);
-                    let mut zs_j = zs_i.clone();
-                    for z in options.get(&(aj, bj)).unwrap().iter() {
-                        zs_j.insert(z);
-                    }
-                    for k in (j + 1)..compat.len() {
-                        let (ak, bk) = compat[k];
-                        if !swaps_j.contains_key(ak) && !swaps_j.contains_key(bk) {
-                            let mut swaps_k = swaps_j.clone();
-                            swaps_k.insert(ak, bk);
-                            swaps_k.insert(bk, ak);
-                            let mut zs_k = zs_j.clone();
-                            for z in options.get(&(ak, bk)).unwrap().iter() {
-                                zs_k.insert(z);
-                            }
-                            if zs_k.len() == bad_zs.len() {
-                                let mut test = circuit.swapped_output_pairs(&swaps);
-                                let x = test.extract_num_with("x");
-                                let y = test.extract_num_with("y");
-                                test.run_to_completion();
-                                let z = test.extract_num_with("z");
-                                let goal = x + y;
-                                let wrong = z ^ goal;
-                                if wrong == 0 {
-                                    println!("We have a winner!");
-                                    println!("{}", swaps_k.keys().join(","));
-                                    return;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
