@@ -2,11 +2,13 @@ use std::{
     collections::{BTreeMap, BTreeSet, HashMap},
     fmt::Display,
     iter::repeat,
+    hash::Hash,
 };
 
 use common_macros::b_tree_set;
 use hash_histogram::HashHistogram;
 use itertools::Itertools;
+use trait_set::trait_set;
 
 use std::io::Write;
 
@@ -55,10 +57,19 @@ impl AdjacencySets {
     }
 
     pub fn graphviz(&self, filename: &str) -> anyhow::Result<()> {
+        let dummy = HashMap::new();
         if self.is_directed() {
-            graphviz_directed(self.pairs(), filename)
+            graphviz_directed(self.pairs(), filename, &dummy)
         } else {
-            graphviz_undirected(self.pairs(), filename)
+            graphviz_undirected(self.pairs(), filename, &dummy)
+        }
+    }
+
+    pub fn graphviz_labeled(&self, filename: &str, edge_labels: &HashMap<(&str,&str), String>) -> anyhow::Result<()> {
+        if self.is_directed() {
+            graphviz_directed(self.pairs(), filename, edge_labels)
+        } else {
+            graphviz_undirected(self.pairs(), filename, edge_labels)
         }
     }
 
@@ -148,33 +159,42 @@ impl AdjacencySets {
     }
 }
 
+trait_set! {pub trait GraphVizItem = Display + Hash + Eq + PartialEq + Clone}
+
 // graphviz:
 // To view the generated file, use:
 //   dot -Tpng -Kneato -O [filename]
-pub fn graphviz_undirected<N: Display, I: Iterator<Item = (N, N)>>(
+pub fn graphviz_undirected<N: GraphVizItem, I: Iterator<Item = (N, N)>>(
     items: I,
     output_filename: &str,
+    edge_labels: &HashMap<(N,N), String>,
 ) -> anyhow::Result<()> {
-    graphviz(items, output_filename, "graph", "--")
+    graphviz(items, output_filename, "graph", "--", edge_labels)
 }
 
-pub fn graphviz_directed<N: Display, I: Iterator<Item = (N, N)>>(
+pub fn graphviz_directed<N: GraphVizItem, I: Iterator<Item = (N, N)>>(
     items: I,
     output_filename: &str,
+    edge_labels: &HashMap<(N,N), String>,
 ) -> anyhow::Result<()> {
-    graphviz(items, output_filename, "digraph", "->")
+    graphviz(items, output_filename, "digraph", "->", edge_labels)
 }
 
-fn graphviz<N: Display, I: Iterator<Item = (N, N)>>(
+fn graphviz<N: GraphVizItem, I: Iterator<Item = (N, N)>>(
     items: I,
     output_filename: &str,
     header: &str,
     edge: &str,
+    edge_labels: &HashMap<(N,N), String>,
 ) -> anyhow::Result<()> {
     let mut file_out = std::fs::File::create(output_filename)?;
     writeln!(file_out, "{header} G {{")?;
     for (src, dest) in items {
-        writeln!(file_out, "  {src} {edge} {dest}")?;
+        let mut label = String::new();
+        if let Some(edge_label) = edge_labels.get(&(src.clone(), dest.clone())) {
+            label = format!("[label = \"{edge_label}\"]")
+        }
+        writeln!(file_out, "  {src} {edge} {dest} {label}")?;
     }
     writeln!(file_out, "}}")?;
     Ok(())

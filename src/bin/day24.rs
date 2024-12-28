@@ -1,5 +1,5 @@
 use std::{
-    collections::{BTreeMap, BTreeSet},
+    collections::{BTreeMap, BTreeSet, HashMap},
     str::FromStr,
 };
 
@@ -20,8 +20,8 @@ fn main() -> anyhow::Result<()> {
         } else if options.contains(&"-singles") {
             show_single_ancestors(circuit);
         } else if options.contains(&"-dot") {
-            let graph = circuit.directed_edges();
-            graphviz_directed(graph.iter().cloned(), "day24.dot")?;
+            let (graph, labels) = circuit.directed_edges();
+            graphviz_directed(graph.iter().cloned(), "day24.dot", &labels)?;
         } else {
             match part {
                 Part::One => part1(circuit),
@@ -39,7 +39,8 @@ fn part1(mut circuit: Circuit) {
 
 fn part2(circuit: Circuit) {
     let mut graph = AdjacencySets::default();
-    for (src, dest) in circuit.directed_edges() {
+    let (edges, _) = circuit.directed_edges();
+    for (src, dest) in edges {
         graph.connect(src.as_str(), dest.as_str());
     }
     let graph = graph;
@@ -111,13 +112,16 @@ impl Circuit {
         Ok(Self { values, pending })
     }
 
-    fn directed_edges(&self) -> Vec<(String, String)> {
+    fn directed_edges(&self) -> (Vec<(String, String)>, HashMap<(String,String), String>) {
+        let mut labels = HashMap::new();
         let mut graph = vec![];
         BfsIter::multi_start(
             self.pending.keys().cloned().filter(|k| k.starts_with("z")),
             |output| match self.pending.get(output) {
                 None => vec![],
                 Some(gate) => {
+                    labels.insert((gate.args().a.clone(), output.clone()), gate.type_name());
+                    labels.insert((gate.args().b.clone(), output.clone()), gate.type_name());
                     graph.push((gate.args().a.clone(), output.clone()));
                     graph.push((gate.args().b.clone(), output.clone()));
                     vec![gate.args().a.clone(), gate.args().b.clone()]
@@ -125,7 +129,7 @@ impl Circuit {
             },
         )
         .last();
-        graph
+        (graph, labels)
     }
 
     fn extract_num_with(&self, prefix: &str) -> u128 {
@@ -328,6 +332,14 @@ impl Gate {
                 values.insert(c, self.eval(a, b));
             })
             .map_or(Some((self.output().to_string(), self.clone())), |_| None)
+    }
+
+    fn type_name(&self) -> String {
+        match self {
+            Gate::And(_) => format!("AND"),
+            Gate::Or(_) => format!("OR"),
+            Gate::Xor(_) => format!("XOR"),
+        }
     }
 }
 
