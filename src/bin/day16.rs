@@ -41,7 +41,7 @@ fn successor_func(maze: &GridCharWorld) -> impl Fn(&Reindeer) -> Vec<(Reindeer, 
     }
 }
 
-fn part1<S: FnMut(&Reindeer) -> Vec<(Reindeer, usize)>, H: Fn(&Reindeer) -> usize>(
+fn part1<S: FnMut(&Reindeer) -> Vec<(Reindeer, usize)>, H: Fn(&Reindeer) -> Option<usize>>(
     end: Position,
     searcher: &mut PrioritySearchIter<usize, Reindeer, S, H>,
 ) {
@@ -50,7 +50,7 @@ fn part1<S: FnMut(&Reindeer) -> Vec<(Reindeer, usize)>, H: Fn(&Reindeer) -> usiz
     println!("{score}");
 }
 
-fn part2<S: FnMut(&Reindeer) -> Vec<(Reindeer, usize)>, H: Fn(&Reindeer) -> usize>(
+fn part2<S: FnMut(&Reindeer) -> Vec<(Reindeer, usize)>, H: Fn(&Reindeer) -> Option<usize>>(
     end: Position,
     maze: &GridCharWorld,
     searcher: &mut PrioritySearchIter<usize, Reindeer, S, H>,
