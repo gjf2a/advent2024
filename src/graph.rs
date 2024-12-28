@@ -130,7 +130,6 @@ impl AdjacencySets {
             .collect_vec();
         let visited = BfsIter::multi_start(source_nodes.iter().cloned(), |n| {
             let mut next = vec![];
-            println!("visiting {n}");
             for neighbor in self.neighbors_of(n.as_str()) {
                 let count = in_degrees.get_mut(neighbor).unwrap();
                 *count -= 1;
